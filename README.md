@@ -95,7 +95,7 @@ except Exception as e:
 
 ---
 
-## Premium Demo Script
+## Demo Script
 To see the API client in action immediately and print a beautifully formatted visualization of the Eurofurence Pretalx data, run the included `demo.py` script:
 
 ```bash

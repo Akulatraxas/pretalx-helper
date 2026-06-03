@@ -85,11 +85,11 @@ class PretalxClient:
         if not url or not apikey:
             load_env()
             
-        self.base_url = url or os.environ.get("PRETALX_URL")
+        raw_url = url or os.environ.get("PRETALX_URL")
         self.apikey = apikey or os.environ.get("PRETALX_APIKEY")
         self.version = version
         
-        if not self.base_url:
+        if not raw_url:
             raise ValueError(
                 "Pretalx Base URL is missing. Set PRETALX_URL in your environment/.env or pass it to the constructor."
             )
@@ -98,8 +98,16 @@ class PretalxClient:
                 "Pretalx API Key is missing. Set PRETALX_APIKEY in your environment/.env or pass it to the constructor."
             )
             
+        # Standardize and save the base website URL (without /api or /api/v1) for link generation
+        self.site_url = raw_url.rstrip("/")
+        if self.site_url.endswith("/api/v1"):
+            self.site_url = self.site_url[:-7]
+        elif self.site_url.endswith("/api"):
+            self.site_url = self.site_url[:-4]
+        self.site_url = self.site_url.rstrip("/")
+
         # Clean the base URL: ensure it doesn't end with trailing slash and includes /api
-        self.base_url = self.base_url.rstrip("/")
+        self.base_url = raw_url.rstrip("/")
         if not self.base_url.endswith("/api") and not self.base_url.endswith("/api/v1"):
             # By default, endpoints exist under the /api/ prefix
             self.base_url = f"{self.base_url}/api"
@@ -421,3 +429,147 @@ class PretalxClient:
         if expand is not None:
             params["expand"] = expand
         return self._request("GET", f"/events/{event_slug}/slots/{slot_id}/", params=params)
+
+    # --- Submissions Endpoints ---
+
+    def list_submissions(self, event_slug, q=None, state=None, expand=None):
+        """
+        Lists submissions of an event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            q (str, optional): Search term matching submission title or speaker name.
+            state (str, optional): Filter by submission state.
+            expand (list, optional): Select fields to expand.
+            
+        Returns:
+            generator: Yields submission dictionaries.
+        """
+        params = {}
+        if q is not None:
+            params["q"] = q
+        if state is not None:
+            params["state"] = state
+        if expand is not None:
+            params["expand"] = expand
+            
+        return self._get_paginated(f"/events/{event_slug}/submissions/", params=params)
+
+    def get_submission(self, event_slug, code, expand=None):
+        """
+        Retrieves detailed information for a specific submission by its unique code.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            code (str): The unique alphanumeric code of the submission.
+            expand (list, optional): Select fields to expand.
+            
+        Returns:
+            dict: Detailed submission dictionary.
+        """
+        params = {}
+        if expand is not None:
+            params["expand"] = expand
+        return self._request("GET", f"/events/{event_slug}/submissions/{code}/", params=params)
+
+    def create_submission(self, event_slug, data):
+        """
+        Creates a new submission inside the specified event context.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            data (dict): The fields of the submission to create.
+            
+        Returns:
+            dict: The created submission details.
+        """
+        return self._request("POST", f"/events/{event_slug}/submissions/", data=data)
+
+    def update_submission(self, event_slug, code, data, partial=False):
+        """
+        Updates a submission.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            code (str): The unique alphanumeric code of the submission to update.
+            data (dict): The payload containing fields to update.
+            partial (bool, optional): If True, performs PATCH (partial update). Else PUT.
+            
+        Returns:
+            dict: The updated submission details.
+        """
+        method = "PATCH" if partial else "PUT"
+        return self._request(method, f"/events/{event_slug}/submissions/{code}/", data=data)
+
+    def copy_submission(self, event_slug, code, title=None, duration=None, slot_count=None):
+        """
+        Copies a submission by its code.
+        Copies the title, submission_type, track, tags, duration, abstract,
+        description, notes, internal_notes, and content_locale if they exist.
+        Allows optionally overriding title, duration, and slot_count.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            code (str): The unique alphanumeric code of the submission to copy.
+            title (str, optional): Override the title for the new submission.
+            duration (int, optional): Override the duration (in minutes) for the new submission.
+            slot_count (int, optional): Override the slot count for the new submission.
+            
+        Returns:
+            tuple: (dict representing new submission, URL string to the created submission in orga view)
+        """
+        # Fetch the source submission
+        source = self.get_submission(event_slug, code)
+        
+        payload = {}
+        
+        # Helper to extract ID from potentially expanded dictionary objects
+        def _extract_id(val):
+            if isinstance(val, dict) and "id" in val:
+                return val["id"]
+            return val
+
+        # Fields to copy directly if they are not None in the source
+        fields_to_copy = [
+            "title", "abstract", "description", "notes", "internal_notes", "content_locale"
+        ]
+        for field in fields_to_copy:
+            if field in source and source[field] is not None:
+                payload[field] = source[field]
+                
+        # Copy submission_type (required field)
+        if "submission_type" in source:
+            payload["submission_type"] = _extract_id(source["submission_type"])
+            
+        # Copy track
+        if "track" in source and source["track"] is not None:
+            payload["track"] = _extract_id(source["track"])
+            
+        # Copy tags
+        if "tags" in source and source["tags"] is not None:
+            payload["tags"] = [_extract_id(t) for t in source["tags"]]
+            
+        # Copy duration
+        if "duration" in source and source["duration"] is not None:
+            payload["duration"] = source["duration"]
+            
+        # Copy slot_count
+        if "slot_count" in source and source["slot_count"] is not None:
+            payload["slot_count"] = source["slot_count"]
+            
+        # Apply overrides
+        if title is not None:
+            payload["title"] = title
+        if duration is not None:
+            payload["duration"] = duration
+        if slot_count is not None:
+            payload["slot_count"] = slot_count
+            
+        # Create the new submission
+        new_sub = self.create_submission(event_slug, payload)
+        
+        # Reconstruct the orga dashboard URL for this submission
+        new_code = new_sub.get("code")
+        orga_url = f"{self.site_url}/orga/event/{event_slug}/submissions/{new_code}/"
+        
+        return new_sub, orga_url

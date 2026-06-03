@@ -93,11 +93,36 @@ except Exception as e:
     print(f"Could not load teams: {e}")
 ```
 
+### 6. Submissions & Copying
+```python
+# Get detailed submission
+submission = client.get_submission("eurofurence-30-2026", "MJRE78")
+print(f"Title: {submission['title']}")
+
+# Copy an existing submission with optional overrides
+new_sub, orga_url = client.copy_submission(
+    event_slug="eurofurence-30-2026",
+    code="MJRE78",
+    title="New Locker Service Title",  # Override
+    duration=45,                      # Override (minutes)
+    slot_count=2                      # Override
+)
+print(f"Cloned Code: {new_sub['code']}")
+print(f"Organizer Link: {orga_url}")
+```
+
 ---
 
-## Demo Script
-To see the API client in action immediately and print a beautifully formatted visualization of the Eurofurence Pretalx data, run the included `demo.py` script:
+## Command Line Utilities
 
+### 1. General Demo
+To see the API client in action immediately and print a beautifully formatted visualization of the Eurofurence Pretalx data, run the included `demo.py` script:
 ```bash
 python3 demo.py
+```
+
+### 2. Copy Submission Helper
+You can clone/copy an existing submission with overrides directly from the command line using `copy_submission.py`:
+```bash
+python3 copy_submission.py --event eurofurence-30-2026 --code MJRE78 --title "Cloned Locker Service Test" --duration 45 --slots 2
 ```

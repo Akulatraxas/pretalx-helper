@@ -1,6 +1,6 @@
 """
 Pretalx API Python Client
-A clean, robust, and zero-dependency library for interacting with the Pretalx REST API.
+A low dependency api-lib to speak to pretalx v1
 """
 
 import os

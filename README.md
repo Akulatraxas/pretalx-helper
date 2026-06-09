@@ -126,3 +126,28 @@ You can clone/copy an existing submission with overrides directly from the comma
 ```bash
 python3 copy_submission.py --event eurofurence-30-2026 --code MJRE78 --title "Cloned Locker Service Test" --duration 45 --slots 2
 ```
+
+### 3. Submission Conflict Finder
+You can search for empty abstracts/descriptions, confirmed submissions without speakers, or confirmed submissions without assigned rooms using `find_conflicts.py`:
+```bash
+python3 find_conflicts.py --event eurofurence-30-2026
+```
+
+### 4. Schedule Drill-Down Tool
+You can drill down into schedules, slots, and submissions using `schedule.py`.
+
+* **List available schedule versions** (injects `wip` and `latest`):
+  ```bash
+  python3 schedule.py --event eurofurence-30-2026
+  ```
+
+* **Show slots for a schedule version** (sorted by day and time):
+  ```bash
+  python3 schedule.py --event eurofurence-30-2026 --schedule latest
+  ```
+
+* **Show details of a submission** (expanded metadata and schedule slot occurrences):
+  ```bash
+  python3 schedule.py --event eurofurence-30-2026 --submission MJRE78
+  ```
+

@@ -573,3 +573,239 @@ class PretalxClient:
         orga_url = f"{self.site_url}/orga/event/{event_slug}/submissions/{new_code}/"
         
         return new_sub, orga_url
+
+    # --- Rooms Endpoints ---
+
+    def list_rooms(self, event_slug, q=None):
+        """
+        Lists all rooms of an event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            q (str, optional): Search term matching the room's name.
+            
+        Returns:
+            generator: Yields room dictionaries.
+        """
+        params = {}
+        if q is not None:
+            params["q"] = q
+        return self._get_paginated(f"/events/{event_slug}/rooms/", params=params)
+
+    def create_room(self, event_slug, data):
+        """
+        Creates a new room inside the specified event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            data (dict): The fields of the room to create.
+            
+        Returns:
+            dict: The created room details.
+        """
+        return self._request("POST", f"/events/{event_slug}/rooms/", data=data)
+
+    # --- Tags Endpoints ---
+
+    def list_tags(self, event_slug, q=None):
+        """
+        Lists all tags of an event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            q (str, optional): Search term matching the tag name.
+            
+        Returns:
+            generator: Yields tag dictionaries.
+        """
+        params = {}
+        if q is not None:
+            params["q"] = q
+        return self._get_paginated(f"/events/{event_slug}/tags/", params=params)
+
+    def create_tag(self, event_slug, data):
+        """
+        Creates a new tag inside the specified event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            data (dict): The fields of the tag to create.
+            
+        Returns:
+            dict: The created tag details.
+        """
+        return self._request("POST", f"/events/{event_slug}/tags/", data=data)
+
+    # --- Tracks Endpoints ---
+
+    def list_tracks(self, event_slug, q=None):
+        """
+        Lists all tracks of an event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            q (str, optional): Search term matching the track's name.
+            
+        Returns:
+            generator: Yields track dictionaries.
+        """
+        params = {}
+        if q is not None:
+            params["q"] = q
+        return self._get_paginated(f"/events/{event_slug}/tracks/", params=params)
+
+    def create_track(self, event_slug, data):
+        """
+        Creates a new track inside the specified event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            data (dict): The fields of the track to create.
+            
+        Returns:
+            dict: The created track details.
+        """
+        return self._request("POST", f"/events/{event_slug}/tracks/", data=data)
+
+    # --- Mail Templates Endpoints ---
+
+    def list_mail_templates(self, event_slug, q=None):
+        """
+        Lists all mail templates of an event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            q (str, optional): Search term matching the template's role or subject.
+            
+        Returns:
+            generator: Yields mail template dictionaries.
+        """
+        params = {}
+        if q is not None:
+            params["q"] = q
+        return self._get_paginated(f"/events/{event_slug}/mail-templates/", params=params)
+
+    def create_mail_template(self, event_slug, data):
+        """
+        Creates a new mail template inside the specified event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            data (dict): The fields of the mail template to create.
+            
+        Returns:
+            dict: The created mail template details.
+        """
+        return self._request("POST", f"/events/{event_slug}/mail-templates/", data=data)
+
+    def update_mail_template(self, event_slug, template_id, data, partial=False):
+        """
+        Updates a mail template.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            template_id (int): The unique integer ID of the mail template.
+            data (dict): The payload containing fields to update.
+            partial (bool, optional): If True, performs PATCH (partial update). Else PUT.
+            
+        Returns:
+            dict: The updated mail template details.
+        """
+        method = "PATCH" if partial else "PUT"
+        return self._request(method, f"/events/{event_slug}/mail-templates/{template_id}/", data=data)
+
+    # --- Submission Types Endpoints ---
+
+    def list_submission_types(self, event_slug, q=None):
+        """
+        Lists all submission types of an event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            q (str, optional): Search term matching the submission type's name.
+            
+        Returns:
+            generator: Yields submission type dictionaries.
+        """
+        params = {}
+        if q is not None:
+            params["q"] = q
+        return self._get_paginated(f"/events/{event_slug}/submission-types/", params=params)
+
+    def create_submission_type(self, event_slug, data):
+        """
+        Creates a new submission type inside the specified event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            data (dict): The fields of the submission type to create.
+            
+        Returns:
+            dict: The created submission type details.
+        """
+        return self._request("POST", f"/events/{event_slug}/submission-types/", data=data)
+
+    # --- Questions Endpoints ---
+
+    def list_questions(self, event_slug, q=None, expand=None):
+        """
+        Lists all questions of an event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            q (str, optional): Search term matching the question text.
+            expand (list, optional): Select fields to expand ('options', 'submission_types', 'tracks').
+            
+        Returns:
+            generator: Yields question dictionaries.
+        """
+        params = {}
+        if q is not None:
+            params["q"] = q
+        if expand is not None:
+            params["expand"] = expand
+        return self._get_paginated(f"/events/{event_slug}/questions/", params=params)
+
+    def create_question(self, event_slug, data):
+        """
+        Creates a new question inside the specified event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            data (dict): The fields of the question to create.
+            
+        Returns:
+            dict: The created question details.
+        """
+        return self._request("POST", f"/events/{event_slug}/questions/", data=data)
+
+    # --- Speaker Information Endpoints ---
+
+    def list_speaker_information(self, event_slug, q=None):
+        """
+        Lists all speaker information entries of an event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            q (str, optional): Search term matching the title.
+            
+        Returns:
+            generator: Yields speaker information dictionaries.
+        """
+        params = {}
+        if q is not None:
+            params["q"] = q
+        return self._get_paginated(f"/events/{event_slug}/speaker-information/", params=params)
+
+    def create_speaker_information(self, event_slug, data):
+        """
+        Creates a new speaker information entry inside the specified event.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            data (dict): The fields of the speaker information to create.
+            
+        Returns:
+            dict: The created speaker information details.
+        """
+        return self._request("POST", f"/events/{event_slug}/speaker-information/", data=data)

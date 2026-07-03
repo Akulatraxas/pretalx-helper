@@ -356,6 +356,15 @@
     }
 
     // --- Rendering ---
+
+    /**
+     * Check if any text-based search filter is active (search, tracks, tags, speakers).
+     * When search text is active, we search across ALL days.
+     */
+    function isSearchActive() {
+        return filters.search.length > 0;
+    }
+
     function render() {
         if (!scheduleData) return;
 
@@ -372,7 +381,21 @@
 
     function renderCalendarView() {
         viewCalendar.replaceChildren();
-        if (!scheduleData.days || !scheduleData.days[currentDayIndex]) return;
+        if (!scheduleData.days) return;
+
+        // When search is active, search across ALL days
+        if (isSearchActive()) {
+            renderCrossDayCalendar();
+        } else {
+            renderSingleDayCalendar();
+        }
+    }
+
+    /**
+     * Render calendar for a single day (default behavior).
+     */
+    function renderSingleDayCalendar() {
+        if (!scheduleData.days[currentDayIndex]) return;
 
         var day = scheduleData.days[currentDayIndex];
         var filteredSlots = day.slots.filter(matchesFilters);
@@ -383,11 +406,64 @@
         }
         noResults.classList.add("hidden");
 
-        // Group by start time
+        renderTimeGroups(filteredSlots, viewCalendar);
+    }
+
+    /**
+     * Render search results across ALL days, with day section headers.
+     */
+    function renderCrossDayCalendar() {
+        var totalResults = 0;
+
+        scheduleData.days.forEach(function (day, dayIdx) {
+            var filteredSlots = day.slots.filter(matchesFilters);
+            if (filteredSlots.length === 0) return;
+            totalResults += filteredSlots.length;
+
+            // Day section header
+            var daySection = document.createElement("div");
+            daySection.className = "cross-day-section";
+
+            var dayHeader = document.createElement("div");
+            dayHeader.className = "cross-day-header";
+
+            var dayLabel = document.createElement("span");
+            dayLabel.className = "cross-day-label";
+            dayLabel.textContent = day.label;
+            dayHeader.appendChild(dayLabel);
+
+            var countBadge = document.createElement("span");
+            countBadge.className = "cross-day-count";
+            countBadge.textContent = filteredSlots.length + " result" + (filteredSlots.length !== 1 ? "s" : "");
+            dayHeader.appendChild(countBadge);
+
+            var dayLine = document.createElement("div");
+            dayLine.className = "cross-day-line";
+            dayHeader.appendChild(dayLine);
+
+            daySection.appendChild(dayHeader);
+
+            // Render time groups within this day
+            renderTimeGroups(filteredSlots, daySection);
+
+            viewCalendar.appendChild(daySection);
+        });
+
+        if (totalResults === 0) {
+            noResults.classList.remove("hidden");
+        } else {
+            noResults.classList.add("hidden");
+        }
+    }
+
+    /**
+     * Render slots grouped by start time into a container.
+     */
+    function renderTimeGroups(slots, container) {
         var timeGroups = {};
         var timeOrder = [];
 
-        filteredSlots.forEach(function (slot) {
+        slots.forEach(function (slot) {
             var startTime = slot.start
                 ? slot.start.substring(11, 16)
                 : "unscheduled";
@@ -428,7 +504,7 @@
             });
 
             group.appendChild(grid);
-            viewCalendar.appendChild(group);
+            container.appendChild(group);
         });
     }
 
@@ -459,6 +535,10 @@
             }
             roomSlots[roomId].push(slot);
         });
+
+        // Create a scroll wrapper with indicators
+        var scrollWrapper = document.createElement("div");
+        scrollWrapper.className = "rooms-scroll-wrapper";
 
         // Determine column count
         var roomCount = scheduleData.rooms.length;
@@ -492,7 +572,77 @@
             grid.appendChild(column);
         });
 
-        viewRooms.appendChild(grid);
+        // Left scroll indicator
+        var leftIndicator = document.createElement("div");
+        leftIndicator.className = "scroll-indicator scroll-indicator-left";
+        leftIndicator.setAttribute("aria-hidden", "true");
+        var leftArrow = createSVGIcon(
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>'
+        );
+        leftIndicator.appendChild(leftArrow);
+        leftIndicator.addEventListener("click", function () {
+            grid.scrollBy({ left: -320, behavior: "smooth" });
+        });
+
+        // Right scroll indicator
+        var rightIndicator = document.createElement("div");
+        rightIndicator.className = "scroll-indicator scroll-indicator-right";
+        rightIndicator.setAttribute("aria-hidden", "true");
+        var rightArrow = createSVGIcon(
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>'
+        );
+        rightIndicator.appendChild(rightArrow);
+        rightIndicator.addEventListener("click", function () {
+            grid.scrollBy({ left: 320, behavior: "smooth" });
+        });
+
+        // Scroll hint text for first-time users
+        var scrollHint = document.createElement("div");
+        scrollHint.className = "scroll-hint";
+        var hintIcon = createSVGIcon(
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 1 12"></polyline><polyline points="23 12 19 12"></polyline><polyline points="7 8 5 12 7 16"></polyline><polyline points="17 8 19 12 17 16"></polyline><line x1="5" y1="12" x2="19" y2="12"></line></svg>'
+        );
+        scrollHint.appendChild(hintIcon);
+        var hintText = document.createElement("span");
+        hintText.textContent = "Scroll horizontally to see all rooms";
+        scrollHint.appendChild(hintText);
+
+        scrollWrapper.appendChild(leftIndicator);
+        scrollWrapper.appendChild(grid);
+        scrollWrapper.appendChild(rightIndicator);
+
+        viewRooms.appendChild(scrollHint);
+        viewRooms.appendChild(scrollWrapper);
+
+        // Update scroll indicator visibility
+        function updateScrollIndicators() {
+            var scrollLeft = grid.scrollLeft;
+            var maxScroll = grid.scrollWidth - grid.clientWidth;
+
+            if (maxScroll <= 5) {
+                // No scrolling needed — hide everything
+                leftIndicator.classList.remove("visible");
+                rightIndicator.classList.remove("visible");
+                scrollHint.classList.add("hidden");
+                scrollWrapper.classList.remove("has-scroll");
+            } else {
+                scrollWrapper.classList.add("has-scroll");
+                // Show/hide scroll hint (only hide after first scroll)
+                if (scrollLeft > 10) {
+                    scrollHint.classList.add("hidden");
+                }
+                leftIndicator.classList.toggle("visible", scrollLeft > 10);
+                rightIndicator.classList.toggle("visible", scrollLeft < maxScroll - 10);
+            }
+        }
+
+        grid.addEventListener("scroll", updateScrollIndicators, { passive: true });
+        // Initial check after layout
+        requestAnimationFrame(function () {
+            updateScrollIndicators();
+        });
+        // Also check on resize
+        window.addEventListener("resize", updateScrollIndicators);
     }
 
     // --- Event Card Creation ---
@@ -673,7 +823,7 @@
                 if (speaker.avatar) {
                     var img = document.createElement("img");
                     img.className = "speaker-avatar";
-                    img.src = speaker.avatar;
+                    img.src = proxyImageUrl(speaker.avatar);
                     img.alt = speaker.name || "Speaker";
                     img.loading = "lazy";
                     img.addEventListener("error", function () {
@@ -794,6 +944,15 @@
     }
 
     // --- Helpers ---
+
+    /**
+     * Proxy an image URL through the backend to add authentication.
+     * This is necessary because Pretalx avatar URLs may require API token auth.
+     */
+    function proxyImageUrl(url) {
+        if (!url) return "";
+        return BASE_PATH + "/api/image-proxy?url=" + encodeURIComponent(url);
+    }
 
     /**
      * Strip HTML tags from a string, returning plain text.

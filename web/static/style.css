@@ -553,13 +553,176 @@ input {
 }
 
 /* ============================================
+   CROSS-DAY SEARCH RESULTS
+   ============================================ */
+.cross-day-section {
+    margin-bottom: 36px;
+}
+
+.cross-day-section:last-child {
+    margin-bottom: 0;
+}
+
+.cross-day-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.cross-day-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent-primary), #818cf8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.cross-day-count {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+    flex-shrink: 0;
+    border: 1px solid var(--border-subtle);
+}
+
+.cross-day-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border-medium), transparent);
+}
+
+/* ============================================
    ROOM VIEW
    ============================================ */
+
+/* Scroll hint banner */
+.scroll-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    margin-bottom: 12px;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--accent-primary);
+    transition: opacity var(--transition-base);
+    animation: hintPulse 2s ease-in-out infinite;
+}
+
+.scroll-hint.hidden {
+    display: none !important;
+}
+
+@keyframes hintPulse {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 1; }
+}
+
+.scroll-hint svg {
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+/* Scroll wrapper with indicators */
+.rooms-scroll-wrapper {
+    position: relative;
+}
+
+/* Gradient fade edges when content is scrollable */
+.rooms-scroll-wrapper.has-scroll::before,
+.rooms-scroll-wrapper.has-scroll::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    z-index: 5;
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+}
+
+.rooms-scroll-wrapper.has-scroll::before {
+    left: 0;
+    background: linear-gradient(90deg, var(--bg-base) 0%, transparent 100%);
+    opacity: 0;
+}
+
+.rooms-scroll-wrapper.has-scroll::after {
+    right: 0;
+    background: linear-gradient(270deg, var(--bg-base) 0%, transparent 100%);
+}
+
+/* Show left fade when scrolled */
+.rooms-scroll-wrapper.has-scroll .scroll-indicator-left.visible ~ .rooms-grid ~ .dummy,
+.rooms-scroll-wrapper.has-scroll:has(.scroll-indicator-left.visible)::before {
+    opacity: 1;
+}
+
+/* Scroll indicator buttons */
+.scroll-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 15;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-medium);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    pointer-events: none;
+    transition: all var(--transition-base);
+}
+
+.scroll-indicator.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.scroll-indicator:hover {
+    background: var(--accent-primary);
+    color: #fff;
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-50%) scale(1.05);
+}
+
+.scroll-indicator-left {
+    left: -6px;
+}
+
+.scroll-indicator-right {
+    right: -6px;
+}
+
 .rooms-grid {
     display: grid;
     gap: 16px;
     overflow-x: auto;
     padding-bottom: 16px;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-medium) transparent;
 }
 
 .room-column {

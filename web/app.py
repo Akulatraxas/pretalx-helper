@@ -9,8 +9,13 @@ import json
 import threading
 import time
 import logging
+import hashlib
+import re
+import urllib.request
+import urllib.error
+import urllib.parse
 
-from flask import Flask, jsonify, send_from_directory, Response
+from flask import Flask, jsonify, send_from_directory, Response, request
 from pretalx_client import PretalxClient, PretalxAPIError
 
 # --- Configuration (all via environment variables) ---
@@ -349,6 +354,59 @@ def api_refresh():
     thread = threading.Thread(target=fetch_and_cache, daemon=True)
     thread.start()
     return jsonify({"status": "refresh started"})
+
+
+@app.route(f"{BASE_PATH}/api/image-proxy")
+def api_image_proxy():
+    """Proxy image requests to the Pretalx instance with authentication.
+
+    This is needed because speaker avatar URLs from the Pretalx API
+    require authentication headers that the browser cannot provide.
+    Only URLs belonging to the configured Pretalx instance are proxied
+    to prevent SSRF.
+    """
+    url = request.args.get("url", "")
+    if not url:
+        return Response("Missing url parameter", status=400)
+
+    # Validate that the URL belongs to the configured Pretalx instance
+    parsed_pretalx = urllib.parse.urlparse(PRETALX_URL)
+    parsed_url = urllib.parse.urlparse(url)
+
+    if not parsed_url.scheme or not parsed_url.netloc:
+        return Response("Invalid URL", status=400)
+
+    if parsed_url.netloc != parsed_pretalx.netloc:
+        return Response("URL not allowed", status=403)
+
+    # Only allow HTTPS (or HTTP if Pretalx itself is HTTP)
+    allowed_schemes = {parsed_pretalx.scheme, "https"}
+    if parsed_url.scheme not in allowed_schemes:
+        return Response("URL scheme not allowed", status=403)
+
+    try:
+        req = urllib.request.Request(url, method="GET")
+        req.add_header("Authorization", f"Token {PRETALX_APIKEY}")
+        req.add_header("Accept", "image/*")
+
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            content_type = resp.headers.get("Content-Type", "image/jpeg")
+            image_data = resp.read()
+
+            # Only serve image content types
+            if not content_type.startswith("image/"):
+                return Response("Not an image", status=400)
+
+            response = Response(image_data, status=200)
+            response.headers["Content-Type"] = content_type
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
+    except urllib.error.HTTPError as e:
+        logger.warning("Image proxy HTTP error for %s: %s", url, e.code)
+        return Response(f"Upstream error: {e.code}", status=502)
+    except Exception as e:
+        logger.warning("Image proxy error for %s: %s", url, e)
+        return Response("Failed to fetch image", status=502)
 
 
 @app.route(f"{BASE_PATH}/api/health")

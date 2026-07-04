@@ -45,6 +45,7 @@
     const btnClearFilters = $("btn-clear-filters");
     const detailModal = $("detail-modal");
     const modalClose = $("modal-close");
+    const modalCopyLink = $("modal-copy-link");
 
     // --- Utility: generate a consistent color from a string ---
     function stringToHSL(str) {
@@ -937,6 +938,9 @@
             descSection.classList.add("hidden");
         }
 
+        // Update URL hash for deep-linking
+        window.history.replaceState(null, "", window.location.pathname + "#event-" + slot.id);
+
         // Show modal
         detailModal.classList.remove("hidden");
         document.body.style.overflow = "hidden";
@@ -945,6 +949,13 @@
     function closeDetailModal() {
         detailModal.classList.add("hidden");
         document.body.style.overflow = "";
+        // Restore view hash
+        var viewHash = currentView === "rooms" ? "rooms" : "calendar";
+        window.history.replaceState(null, "", window.location.pathname + "#" + viewHash);
+        // Reset copy-link button text if it was changed
+        if (modalCopyLink) {
+            modalCopyLink.textContent = "Copy link";
+        }
     }
 
     function createAvatarPlaceholder(name) {
@@ -1082,7 +1093,39 @@
         }
     });
 
+    // Modal copy-link button
+    if (modalCopyLink) {
+        modalCopyLink.addEventListener("click", function () {
+            var url = window.location.href;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(function () {
+                    modalCopyLink.textContent = "Copied!";
+                    setTimeout(function () {
+                        modalCopyLink.textContent = "Copy link";
+                    }, 2000);
+                }).catch(function () {
+                    modalCopyLink.textContent = url;
+                });
+            } else {
+                // Fallback: select a temporary input
+                var tmp = document.createElement("input");
+                tmp.value = url;
+                document.body.appendChild(tmp);
+                tmp.select();
+                try { document.execCommand("copy"); modalCopyLink.textContent = "Copied!"; } catch (e) {}
+                document.body.removeChild(tmp);
+                setTimeout(function () { modalCopyLink.textContent = "Copy link"; }, 2000);
+            }
+        });
+    }
+
     // Hash routing
+    // Returns the slot ID from an event hash like "#event-123", or null.
+    function parseEventHash(hash) {
+        var match = hash.replace("#", "").match(/^event-(\d+)$/);
+        return match ? Number(match[1]) : null;
+    }
+
     function checkHash() {
         var hash = window.location.hash.replace("#", "");
         if (hash === "rooms") {
@@ -1096,7 +1139,31 @@
         }
     }
 
+    /**
+     * If the URL has an #event-{id} hash, find and open that slot's modal.
+     * Should be called after scheduleData is loaded.
+     */
+    function openEventFromHash() {
+        var slotId = parseEventHash(window.location.hash);
+        if (!slotId || !scheduleData || !scheduleData.days) return;
+        for (var d = 0; d < scheduleData.days.length; d++) {
+            var slots = scheduleData.days[d].slots;
+            for (var s = 0; s < slots.length; s++) {
+                if (slots[s].id === slotId) {
+                    // Switch to the day that contains this event
+                    currentDayIndex = d;
+                    updateActiveDayTab();
+                    render();
+                    openDetailModal(slots[s]);
+                    return;
+                }
+            }
+        }
+    }
+
     // --- Init ---
     checkHash();
-    loadData();
+    loadData().then(function () {
+        openEventFromHash();
+    });
 })();

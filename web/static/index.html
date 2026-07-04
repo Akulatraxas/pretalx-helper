@@ -100,9 +100,12 @@
     <!-- Detail modal -->
     <div id="detail-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-content">
-            <button id="modal-close" class="modal-close" aria-label="Close detail view">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
+            <div class="modal-actions">
+                <button id="modal-copy-link" class="modal-copy-link" aria-label="Copy link to this event">Copy link</button>
+                <button id="modal-close" class="modal-close" aria-label="Close detail view">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
             <div class="modal-header">
                 <div id="modal-track-bar" class="modal-track-bar"></div>
                 <img id="modal-image" class="modal-event-image hidden" alt="">

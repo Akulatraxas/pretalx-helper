@@ -908,10 +908,17 @@ input {
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.modal-close {
+.modal-actions {
     position: absolute;
-    top: 14px;
-    right: 14px;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 10;
+}
+
+.modal-close {
     width: 34px;
     height: 34px;
     display: flex;
@@ -919,12 +926,34 @@ input {
     justify-content: center;
     border-radius: var(--radius-md);
     color: var(--text-secondary);
-    z-index: 10;
     transition: all var(--transition-fast);
 }
 .modal-close:hover {
     background: var(--bg-card);
     color: var(--text-primary);
+}
+
+.modal-copy-link {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 34px;
+    padding: 0 12px;
+    border-radius: var(--radius-md);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+.modal-copy-link:hover {
+    color: var(--text-primary);
+    border-color: var(--border-medium);
+    background: var(--bg-elevated);
 }
 
 .modal-header {

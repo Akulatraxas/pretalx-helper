@@ -154,6 +154,8 @@ def build_schedule_data(client, event_slug, schedule_version):
             title = sub_data.get("title", "No Title")
             abstract = sub_data.get("abstract", "")
             description = sub_data.get("description", "")
+            # Submission image (event poster / banner)
+            submission_image = sub_data.get("image") or None
             submission_type_data = sub_data.get("submission_type")
             submission_type = format_localized(submission_type_data.get("name", "")) if isinstance(submission_type_data, dict) else str(submission_type_data or "")
 
@@ -183,13 +185,14 @@ def build_schedule_data(client, event_slug, schedule_version):
                 else:
                     slot_tags.append({"id": tag_id, "tag": f"Tag {tag_id}"})
 
-            # Speakers
+            # Speakers — note: Pretalx API uses 'avatar_url', not 'avatar'
             slot_speakers = []
             for sp in sub_data.get("speakers", []):
                 if isinstance(sp, dict):
                     sp_code = sp.get("code", "")
                     sp_name = sp.get("name", "Unknown")
-                    sp_avatar = sp.get("avatar", None)
+                    # The Pretalx API field is avatar_url (not avatar)
+                    sp_avatar = sp.get("avatar_url") or sp.get("avatar") or None
                     sp_biography = sp.get("biography", "")
                     slot_speakers.append({
                         "code": sp_code,
@@ -214,6 +217,7 @@ def build_schedule_data(client, event_slug, schedule_version):
             abstract = ""
             description = ""
             submission_type = "Blocker"
+            submission_image = None
             track_obj = None
             slot_tags = []
             slot_speakers = []
@@ -234,6 +238,7 @@ def build_schedule_data(client, event_slug, schedule_version):
             "room": {"id": room_id, "name": room_name},
             "title": title,
             "code": code,
+            "image": submission_image if not is_blocker else None,
             "track": track_obj,
             "tags": slot_tags,
             "speakers": slot_speakers,

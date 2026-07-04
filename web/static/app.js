@@ -753,6 +753,20 @@
         // Track bar
         $("modal-track-bar").style.backgroundColor = trackColor;
 
+        // Submission image (hero banner)
+        var modalImageEl = $("modal-image");
+        if (slot.image) {
+            modalImageEl.src = proxyImageUrl(slot.image);
+            modalImageEl.alt = slot.title || "Event image";
+            modalImageEl.classList.remove("hidden");
+            modalImageEl.addEventListener("error", function () {
+                modalImageEl.classList.add("hidden");
+            }, { once: true });
+        } else {
+            modalImageEl.classList.add("hidden");
+            modalImageEl.src = "";
+        }
+
         // Badges
         var badgesContainer = $("modal-badges");
         badgesContainer.replaceChildren();

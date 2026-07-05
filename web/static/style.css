@@ -1,3 +1,50 @@
+/* --- Fonts (Self-hosted) --- */
+/* Inter */
+@font-face {
+    font-family: 'Inter';
+    src: url('fonts/inter-400.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Inter';
+    src: url('fonts/inter-500.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Inter';
+    src: url('fonts/inter-600.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Outfit */
+@font-face {
+    font-family: 'Outfit';
+    src: url('fonts/outfit-500.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Outfit';
+    src: url('fonts/outfit-600.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Outfit';
+    src: url('fonts/outfit-700.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* ============================================
    Pretalx Schedule Preview — Design System
    Dark theme inspired by convention schedule UIs
@@ -324,7 +371,7 @@ input {
 }
 .dropdown-panel.open {
     display: block;
-    animation: dropdownIn 200ms var(--transition-slow);
+    animation: dropdownIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes dropdownIn {
@@ -878,7 +925,7 @@ input {
     align-items: center;
     justify-content: center;
     padding: 24px;
-    animation: modalFadeIn 200ms ease;
+    animation: modalFadeIn 200ms ease forwards;
 }
 
 .modal-overlay.hidden {
@@ -900,7 +947,7 @@ input {
     max-height: 85vh;
     overflow-y: auto;
     box-shadow: var(--shadow-lg);
-    animation: modalSlideIn 300ms var(--transition-slow);
+    animation: modalSlideIn 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes modalSlideIn {

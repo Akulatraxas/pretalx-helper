@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schedule Preview</title>
     <meta name="description" content="Convention schedule preview — browse events by time or room">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
@@ -63,6 +61,13 @@
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </button>
                     <div id="dropdown-speakers" class="dropdown-panel" role="menu"></div>
+                </div>
+                <div class="filter-dropdown" id="filter-rooms-wrapper">
+                    <button id="btn-filter-rooms" class="filter-btn" aria-haspopup="true" aria-expanded="false">
+                        <span>Rooms</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div id="dropdown-rooms" class="dropdown-panel" role="menu"></div>
                 </div>
             </div>
             <button id="btn-clear-filters" class="btn-clear-filters hidden">Clear filters</button>

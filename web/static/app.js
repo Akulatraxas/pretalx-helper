@@ -24,6 +24,7 @@
         tracks: new Set(),
         tags: new Set(),
         speakers: new Set(),
+        rooms: new Set(),
     };
 
     // --- DOM references ---
@@ -132,6 +133,7 @@
             btn.addEventListener("click", function () {
                 currentDayIndex = idx;
                 updateActiveDayTab();
+                pushURLState();
                 render();
             });
             dayTabsContainer.appendChild(btn);
@@ -175,6 +177,14 @@
             "speakers",
             false,
             true
+        );
+        buildDropdown(
+            "dropdown-rooms",
+            "btn-filter-rooms",
+            scheduleData.rooms || [],
+            "name",
+            "rooms",
+            false
         );
     }
 
@@ -253,13 +263,20 @@
                 }
                 updateFilterButtonState(btn, filters[filterKey]);
                 updateClearButton();
+                pushURLState();
                 render();
             });
 
             panel.appendChild(row);
         });
 
-        // Toggle dropdown on button click
+        // Toggle dropdown on button click.
+        // Clone the button to strip any previously registered listeners
+        // (buildDropdown is re-called on every loadData, e.g. refresh/retry).
+        var newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        btn = newBtn;
+
         btn.addEventListener("click", function (e) {
             e.stopPropagation();
             var isOpen = panel.classList.contains("open");
@@ -284,7 +301,8 @@
             filters.search ||
             filters.tracks.size > 0 ||
             filters.tags.size > 0 ||
-            filters.speakers.size > 0;
+            filters.speakers.size > 0 ||
+            filters.rooms.size > 0;
         if (hasFilters) {
             btnClearFilters.classList.remove("hidden");
         } else {
@@ -351,6 +369,12 @@
                     hasMatchingSpeaker = true;
             });
             if (!hasMatchingSpeaker) return false;
+        }
+
+        // Room filter
+        if (filters.rooms.size > 0) {
+            var roomId = slot.room ? String(slot.room.id) : "";
+            if (!filters.rooms.has(roomId)) return false;
         }
 
         return true;
@@ -537,18 +561,24 @@
             roomSlots[roomId].push(slot);
         });
 
+        // When room filter is active, only show the selected rooms as columns
+        var visibleRooms = scheduleData.rooms.filter(function (room) {
+            if (filters.rooms.size === 0) return true;
+            return filters.rooms.has(String(room.id));
+        });
+
         // Create a scroll wrapper with indicators
         var scrollWrapper = document.createElement("div");
         scrollWrapper.className = "rooms-scroll-wrapper";
 
         // Determine column count
-        var roomCount = scheduleData.rooms.length;
+        var roomCount = visibleRooms.length;
         var grid = document.createElement("div");
         grid.className = "rooms-grid";
         grid.style.gridTemplateColumns =
             "repeat(" + Math.max(roomCount, 1) + ", minmax(300px, 1fr))";
 
-        scheduleData.rooms.forEach(function (room) {
+        visibleRooms.forEach(function (room) {
             var roomId = String(room.id);
             var slots = roomSlots[roomId] || [];
 
@@ -938,8 +968,8 @@
             descSection.classList.add("hidden");
         }
 
-        // Update URL hash for deep-linking
-        window.history.replaceState(null, "", window.location.pathname + "#event-" + slot.id);
+        // Update URL to include event deep-link
+        pushURLState(slot.id);
 
         // Show modal
         detailModal.classList.remove("hidden");
@@ -949,9 +979,8 @@
     function closeDetailModal() {
         detailModal.classList.add("hidden");
         document.body.style.overflow = "";
-        // Restore view hash
-        var viewHash = currentView === "rooms" ? "rooms" : "calendar";
-        window.history.replaceState(null, "", window.location.pathname + "#" + viewHash);
+        // Restore URL without event param
+        pushURLState(null);
         // Reset copy-link button text if it was changed
         if (modalCopyLink) {
             modalCopyLink.textContent = "Copy link";
@@ -1013,6 +1042,126 @@
         );
     }
 
+    // --- URL State Sync ---
+
+    /**
+     * Push the current view + day + filter state into the URL as query params.
+     * Optionally include an open event ID (for deep-linking to a modal).
+     * Uses history.replaceState so navigation still works cleanly.
+     */
+    function pushURLState(openEventId) {
+        var params = new URLSearchParams();
+
+        if (currentView !== "calendar") params.set("view", currentView);
+        if (currentDayIndex !== 0) params.set("day", String(currentDayIndex));
+        if (filters.search) params.set("search", filters.search);
+        if (filters.tracks.size > 0)
+            params.set("tracks", Array.from(filters.tracks).join(","));
+        if (filters.tags.size > 0)
+            params.set("tags", Array.from(filters.tags).join(","));
+        if (filters.speakers.size > 0)
+            params.set("speakers", Array.from(filters.speakers).join(","));
+        if (filters.rooms.size > 0)
+            params.set("rooms", Array.from(filters.rooms).join(","));
+        if (openEventId != null)
+            params.set("event", String(openEventId));
+
+        var paramStr = params.toString();
+        var newUrl = window.location.pathname + (paramStr ? "?" + paramStr : "");
+        window.history.replaceState(null, "", newUrl);
+    }
+
+    /**
+     * Read URL query params and apply them to the current state.
+     * Called once on page load, before data is fetched.
+     * Returns the event ID to open after data loads (if any).
+     */
+    function readURLState() {
+        var params = new URLSearchParams(window.location.search);
+
+        var view = params.get("view");
+        if (view === "rooms") {
+            currentView = "rooms";
+            btnRooms.classList.add("active");
+            btnCalendar.classList.remove("active");
+        } else {
+            currentView = "calendar";
+            btnCalendar.classList.add("active");
+            btnRooms.classList.remove("active");
+        }
+
+        var day = parseInt(params.get("day"), 10);
+        if (!isNaN(day) && day >= 0) {
+            currentDayIndex = day;
+        }
+
+        var search = params.get("search");
+        if (search) {
+            filters.search = search;
+            filterSearch.value = search;
+        }
+
+        var tracks = params.get("tracks");
+        if (tracks) {
+            tracks.split(",").forEach(function (id) {
+                if (id) filters.tracks.add(id.trim());
+            });
+        }
+
+        var tags = params.get("tags");
+        if (tags) {
+            tags.split(",").forEach(function (id) {
+                if (id) filters.tags.add(id.trim());
+            });
+        }
+
+        var speakers = params.get("speakers");
+        if (speakers) {
+            speakers.split(",").forEach(function (id) {
+                if (id) filters.speakers.add(id.trim());
+            });
+        }
+
+        var rooms = params.get("rooms");
+        if (rooms) {
+            rooms.split(",").forEach(function (id) {
+                if (id) filters.rooms.add(id.trim());
+            });
+        }
+
+        var eventId = params.get("event");
+        return eventId ? parseInt(eventId, 10) : null;
+    }
+
+    /**
+     * After schedule data is loaded, sync dropdown visual states
+     * to match any filters that were pre-loaded from the URL.
+     */
+    function syncDropdownStatesFromFilters() {
+        document.querySelectorAll(".dropdown-item").forEach(function (item) {
+            var panel = item.closest(".dropdown-panel");
+            if (!panel) return;
+            var filterKey = panel.id
+                .replace("dropdown-", "");
+            var itemId = item.getAttribute("data-id");
+            if (filters[filterKey] && filters[filterKey].has(itemId)) {
+                item.classList.add("selected");
+                item.setAttribute("aria-checked", "true");
+            }
+        });
+        // Update button highlighted states
+        var keyMap = {
+            tracks: "btn-filter-tracks",
+            tags: "btn-filter-tags",
+            speakers: "btn-filter-speakers",
+            rooms: "btn-filter-rooms",
+        };
+        Object.keys(keyMap).forEach(function (key) {
+            var btn = $(keyMap[key]);
+            if (btn) updateFilterButtonState(btn, filters[key]);
+        });
+    }
+
     // --- Event Listeners ---
 
     // View toggle
@@ -1020,7 +1169,7 @@
         currentView = "calendar";
         btnCalendar.classList.add("active");
         btnRooms.classList.remove("active");
-        window.location.hash = "calendar";
+        pushURLState();
         render();
     });
 
@@ -1028,7 +1177,7 @@
         currentView = "rooms";
         btnRooms.classList.add("active");
         btnCalendar.classList.remove("active");
-        window.location.hash = "rooms";
+        pushURLState();
         render();
     });
 
@@ -1039,6 +1188,7 @@
         searchTimeout = setTimeout(function () {
             filters.search = filterSearch.value.trim();
             updateClearButton();
+            pushURLState();
             render();
         }, 250);
     });
@@ -1065,6 +1215,7 @@
         filters.tracks.clear();
         filters.tags.clear();
         filters.speakers.clear();
+        filters.rooms.clear();
         filterSearch.value = "";
 
         // Reset dropdown visual states
@@ -1077,6 +1228,7 @@
         });
 
         updateClearButton();
+        pushURLState();
         render();
     });
 
@@ -1112,39 +1264,18 @@
                 tmp.value = url;
                 document.body.appendChild(tmp);
                 tmp.select();
-                try { document.execCommand("copy"); modalCopyLink.textContent = "Copied!"; } catch (e) {}
+                try { document.execCommand("copy"); modalCopyLink.textContent = "Copied!"; } catch (e) { }
                 document.body.removeChild(tmp);
                 setTimeout(function () { modalCopyLink.textContent = "Copy link"; }, 2000);
             }
         });
     }
 
-    // Hash routing
-    // Returns the slot ID from an event hash like "#event-123", or null.
-    function parseEventHash(hash) {
-        var match = hash.replace("#", "").match(/^event-(\d+)$/);
-        return match ? Number(match[1]) : null;
-    }
-
-    function checkHash() {
-        var hash = window.location.hash.replace("#", "");
-        if (hash === "rooms") {
-            currentView = "rooms";
-            btnRooms.classList.add("active");
-            btnCalendar.classList.remove("active");
-        } else {
-            currentView = "calendar";
-            btnCalendar.classList.add("active");
-            btnRooms.classList.remove("active");
-        }
-    }
-
     /**
-     * If the URL has an #event-{id} hash, find and open that slot's modal.
+     * If an event ID is provided (from URL param), find and open that slot's modal.
      * Should be called after scheduleData is loaded.
      */
-    function openEventFromHash() {
-        var slotId = parseEventHash(window.location.hash);
+    function openEventById(slotId) {
         if (!slotId || !scheduleData || !scheduleData.days) return;
         for (var d = 0; d < scheduleData.days.length; d++) {
             var slots = scheduleData.days[d].slots;
@@ -1162,8 +1293,17 @@
     }
 
     // --- Init ---
-    checkHash();
+    // Read URL state first (sets view, day, filters) then load data.
+    var _pendingEventId = readURLState();
     loadData().then(function () {
-        openEventFromHash();
+        // After data loads, sync dropdown visual states for pre-loaded filters
+        syncDropdownStatesFromFilters();
+        updateClearButton();
+        // Re-render now that day index might have changed
+        updateActiveDayTab();
+        render();
+        if (_pendingEventId) {
+            openEventById(_pendingEventId);
+        }
     });
 })();

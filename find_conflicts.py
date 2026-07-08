@@ -28,7 +28,7 @@ def is_empty_or_todo(text):
         return True
     if isinstance(text, str):
         cleaned = text.strip()
-        return len(cleaned) == 0 or "todo" in cleaned.lower()
+        return len(cleaned) == 0 or "todo" == cleaned.lower()
     if isinstance(text, dict):
         all_empty = all(val is None or (isinstance(val, str) and len(val.strip()) == 0) for val in text.values())
         if all_empty:

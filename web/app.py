@@ -67,6 +67,9 @@ def build_schedule_data(client, event_slug, schedule_version):
     """
     Fetch and normalize schedule data from the Pretalx API.
     Returns a dict ready to be serialized as JSON for the frontend.
+
+    When schedule_version is not 'wip', events in the 'internal' track or
+    with the 'internal' tag are excluded from the output.
     """
     logger.info("Fetching event details for '%s'...", event_slug)
     event_details = client.get_event(event_slug)
@@ -229,6 +232,21 @@ def build_schedule_data(client, event_slug, schedule_version):
             day_str = start[:10]  # "2026-08-14"
         else:
             day_str = "unscheduled"
+
+        # --- Internal event filtering (only for published/non-wip schedules) ---
+        if schedule_version != "wip":
+            # Skip blocker slots (internal setup entries)
+            if is_blocker:
+                logger.debug("Skipping blocker slot: %s", title)
+                continue
+            # Skip events in the "internal" track
+            if track_obj and track_obj.get("name", "").strip().lower() == "internal":
+                logger.debug("Skipping internal-track slot: %s", title)
+                continue
+            # Skip events with the "internal" tag
+            if any(t.get("tag", "").strip().lower() == "internal" for t in slot_tags):
+                logger.debug("Skipping internal-tagged slot: %s", title)
+                continue
 
         slot_obj = {
             "id": slot.get("id"),

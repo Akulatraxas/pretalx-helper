@@ -1140,13 +1140,123 @@ input {
     margin-bottom: 8px;
 }
 
-.modal-text {
+.modal-text,
+.markdown-content {
     font-size: 0.9rem;
     color: var(--text-secondary);
     line-height: 1.7;
-    white-space: pre-wrap;
     word-wrap: break-word;
 }
+
+/* Markdown rendered content */
+.markdown-content p {
+    margin: 0 0 0.75em;
+}
+.markdown-content p:last-child {
+    margin-bottom: 0;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 1.1em 0 0.4em;
+    line-height: 1.3;
+}
+.markdown-content h1 { font-size: 1.2rem; }
+.markdown-content h2 { font-size: 1.05rem; }
+.markdown-content h3 { font-size: 0.95rem; }
+.markdown-content h4 { font-size: 0.9rem; color: var(--text-secondary); }
+.markdown-content h1:first-child,
+.markdown-content h2:first-child,
+.markdown-content h3:first-child { margin-top: 0; }
+
+.markdown-content strong { color: var(--text-primary); font-weight: 600; }
+.markdown-content em { color: var(--text-secondary); font-style: italic; }
+
+.markdown-content ul,
+.markdown-content ol {
+    margin: 0.5em 0 0.75em;
+    padding-left: 1.5em;
+}
+.markdown-content li { margin-bottom: 0.25em; }
+.markdown-content li:last-child { margin-bottom: 0; }
+.markdown-content ul { list-style: disc; }
+.markdown-content ol { list-style: decimal; }
+.markdown-content ul ul,
+.markdown-content ol ul { list-style: circle; }
+
+.markdown-content blockquote {
+    border-left: 3px solid var(--accent-primary);
+    margin: 0.75em 0;
+    padding: 0.4em 0.75em;
+    color: var(--text-muted);
+    background: rgba(99,102,241,0.06);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.markdown-content blockquote p { margin: 0; }
+
+.markdown-content code {
+    font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.82em;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.1em 0.4em;
+    color: #a5b4fc;
+}
+.markdown-content pre {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 0.75em 1em;
+    overflow-x: auto;
+    margin: 0.75em 0;
+}
+.markdown-content pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.85em;
+    color: var(--text-secondary);
+}
+
+.markdown-content a {
+    color: var(--accent-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.markdown-content a:hover { color: #818cf8; }
+
+.markdown-content hr {
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    margin: 1em 0;
+}
+
+.markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    margin: 0.75em 0;
+}
+.markdown-content th {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 2px solid var(--border-medium);
+}
+.markdown-content td {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+}
+.markdown-content tr:last-child td { border-bottom: none; }
 
 /* ============================================
    UTILITY CLASSES

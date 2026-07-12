@@ -15,6 +15,8 @@ import urllib.request
 import urllib.error
 import urllib.parse
 
+import markdown as _markdown
+
 from flask import Flask, jsonify, send_from_directory, Response, request
 from pretalx_client import PretalxClient, PretalxAPIError
 
@@ -63,6 +65,29 @@ def extract_id(val):
     return val
 
 
+# Markdown instance with useful extensions:
+#   extra     → tables, fenced code, footnotes, abbr, attr_list
+#   nl2br     → single newlines become <br> (matches user expectation)
+#   sane_lists → list parsing closer to CommonMark
+_md = _markdown.Markdown(
+    extensions=["extra", "nl2br", "sane_lists"],
+    output_format="html",
+)
+
+
+def md_to_html(text):
+    """Convert a markdown string to sanitised HTML.
+
+    Returns an empty string for falsy input.
+    The Markdown library does not produce <script> tags; remaining XSS
+    risk is mitigated by the CSP script-src 'self' header on every response.
+    """
+    if not text:
+        return ""
+    _md.reset()  # clear internal state between calls (links, footnotes, etc.)
+    return _md.convert(str(text))
+
+
 def build_schedule_data(client, event_slug, schedule_version):
     """
     Fetch and normalize schedule data from the Pretalx API.
@@ -97,6 +122,7 @@ def build_schedule_data(client, event_slug, schedule_version):
     for t in tags_raw:
         tag_name = t.get("tag") or t.get("name")
         tag_str = format_localized(tag_name) if isinstance(tag_name, dict) else str(tag_name or "")
+        if tag_str.startswith("ef_"): continue
         tag_obj = {
             "id": t.get("id"),
             "tag": tag_str,
@@ -260,8 +286,8 @@ def build_schedule_data(client, event_slug, schedule_version):
             "track": track_obj,
             "tags": slot_tags,
             "speakers": slot_speakers,
-            "abstract": abstract,
-            "description": description,
+            "abstract": md_to_html(abstract),
+            "description": md_to_html(description),
             "submission_type": submission_type,
             "is_blocker": is_blocker,
         }
@@ -283,7 +309,7 @@ def build_schedule_data(client, event_slug, schedule_version):
             try:
                 from datetime import datetime
                 dt = datetime.fromisoformat(day_key)
-                label = dt.strftime("%A, %B %d, %Y")
+                label = dt.strftime("%A, %B %d")
             except Exception:
                 label = day_key
 
@@ -448,11 +474,14 @@ def api_health():
 
 
 # --- Startup ---
-if __name__ == "__main__":
-    logger.info("Starting schedule data fetch in background...")
-    fetch_thread = threading.Thread(target=fetch_and_cache, daemon=True)
-    fetch_thread.start()
+# Kick off the initial fetch in a background thread regardless of how the app
+# is launched (gunicorn, python app.py, pytest, etc.). The daemon=True flag
+# ensures the thread won't block process exit when a SIGTERM is received.
+logger.info("Starting schedule data fetch in background...")
+_fetch_thread = threading.Thread(target=fetch_and_cache, daemon=True)
+_fetch_thread.start()
 
+if __name__ == "__main__":
     # NOTE: Binding to 0.0.0.0 inside the container is required for
     # container networking (port mapping). The container itself is
     # isolated and accessed via the mapped host port.

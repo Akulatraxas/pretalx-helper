@@ -319,9 +319,11 @@
         });
     }
 
-    // Close dropdowns when clicking outside
-    document.addEventListener("click", function () {
-        closeAllDropdowns();
+    // Close dropdowns when clicking outside — but NOT when clicking inside a panel
+    document.addEventListener("click", function (e) {
+        if (!e.target.closest(".filter-dropdown")) {
+            closeAllDropdowns();
+        }
     });
 
     // --- Filtering Logic ---
@@ -346,16 +348,16 @@
             if (!filters.tracks.has(trackId)) return false;
         }
 
-        // Tag filter
+        // Tag filter (AND — slot must have ALL selected tags)
         if (filters.tags.size > 0) {
             var slotTagIds = (slot.tags || []).map(function (t) {
                 return String(t.id);
             });
-            var hasMatchingTag = false;
+            var allTagsMatch = true;
             filters.tags.forEach(function (tagId) {
-                if (slotTagIds.indexOf(tagId) >= 0) hasMatchingTag = true;
+                if (slotTagIds.indexOf(tagId) < 0) allTagsMatch = false;
             });
-            if (!hasMatchingTag) return false;
+            if (!allTagsMatch) return false;
         }
 
         // Speaker filter
@@ -953,9 +955,12 @@
         var abstractEl = $("modal-abstract");
         if (slot.abstract && slot.abstract.trim()) {
             abstractSection.classList.remove("hidden");
-            abstractEl.textContent = stripHTML(slot.abstract);
+            abstractEl.classList.add("markdown-content");
+            // abstract is pre-rendered HTML from the backend markdown converter
+            abstractEl.innerHTML = slot.abstract;
         } else {
             abstractSection.classList.add("hidden");
+            abstractEl.innerHTML = "";
         }
 
         // Description
@@ -963,9 +968,12 @@
         var descEl = $("modal-description");
         if (slot.description && slot.description.trim()) {
             descSection.classList.remove("hidden");
-            descEl.textContent = stripHTML(slot.description);
+            descEl.classList.add("markdown-content");
+            // description is pre-rendered HTML from the backend markdown converter
+            descEl.innerHTML = slot.description;
         } else {
             descSection.classList.add("hidden");
+            descEl.innerHTML = "";
         }
 
         // Update URL to include event deep-link

@@ -127,9 +127,26 @@
     }
 
     // --- Day Tabs ---
+    // currentDayIndex === -1 is the sentinel for the "All Days" tab.
     function buildDayTabs() {
         dayTabsContainer.replaceChildren();
         if (!scheduleData || !scheduleData.days) return;
+
+        // "All Days" tab (index -1) — only added when there is more than one real day
+        var realDays = scheduleData.days.filter(function (d) { return d.date !== "unscheduled"; });
+        if (realDays.length > 1) {
+            var allBtn = document.createElement("button");
+            allBtn.className = "day-tab" + (currentDayIndex === -1 ? " active" : "");
+            allBtn.textContent = "All Days";
+            allBtn.setAttribute("data-day-index", "-1");
+            allBtn.addEventListener("click", function () {
+                currentDayIndex = -1;
+                updateActiveDayTab();
+                pushURLState();
+                render();
+            });
+            dayTabsContainer.appendChild(allBtn);
+        }
 
         scheduleData.days.forEach(function (day, idx) {
             var btn = document.createElement("button");
@@ -148,8 +165,9 @@
 
     function updateActiveDayTab() {
         var tabs = dayTabsContainer.querySelectorAll(".day-tab");
-        tabs.forEach(function (tab, idx) {
-            if (idx === currentDayIndex) {
+        tabs.forEach(function (tab) {
+            var tabIdx = parseInt(tab.getAttribute("data-day-index"), 10);
+            if (tabIdx === currentDayIndex) {
                 tab.classList.add("active");
             } else {
                 tab.classList.remove("active");
@@ -425,9 +443,13 @@
     }
 
     /**
-     * Render calendar for a single day (default behavior).
+     * Render calendar for a single day, or all days when currentDayIndex === -1.
      */
     function renderSingleDayCalendar() {
+        if (currentDayIndex === -1) {
+            renderAllDaysCalendar();
+            return;
+        }
         if (!scheduleData.days[currentDayIndex]) return;
 
         var day = scheduleData.days[currentDayIndex];
@@ -440,6 +462,46 @@
         noResults.classList.add("hidden");
 
         renderTimeGroups(filteredSlots, viewCalendar);
+    }
+
+    /**
+     * Render all real (non-unscheduled) days with day-section headers.
+     * Used by the "All Days" tab.
+     */
+    function renderAllDaysCalendar() {
+        var totalResults = 0;
+
+        scheduleData.days.forEach(function (day) {
+            if (day.date === "unscheduled") return; // skip unscheduled
+            var filteredSlots = day.slots.filter(matchesFilters);
+            if (filteredSlots.length === 0) return;
+            totalResults += filteredSlots.length;
+
+            var daySection = document.createElement("div");
+            daySection.className = "cross-day-section";
+
+            var dayHeader = document.createElement("div");
+            dayHeader.className = "cross-day-header";
+
+            var dayLabel = document.createElement("span");
+            dayLabel.className = "cross-day-label";
+            dayLabel.textContent = day.label;
+            dayHeader.appendChild(dayLabel);
+
+            var dayLine = document.createElement("div");
+            dayLine.className = "cross-day-line";
+            dayHeader.appendChild(dayLine);
+
+            daySection.appendChild(dayHeader);
+            renderTimeGroups(filteredSlots, daySection);
+            viewCalendar.appendChild(daySection);
+        });
+
+        if (totalResults === 0) {
+            noResults.classList.remove("hidden");
+        } else {
+            noResults.classList.add("hidden");
+        }
     }
 
     /**
@@ -543,15 +605,22 @@
 
     function renderRoomsView() {
         viewRooms.replaceChildren();
-        if (
-            !scheduleData.days ||
-            !scheduleData.days[currentDayIndex] ||
-            !scheduleData.rooms
-        )
-            return;
+        if (!scheduleData.days || !scheduleData.rooms) return;
 
-        var day = scheduleData.days[currentDayIndex];
-        var filteredSlots = day.slots.filter(matchesFilters);
+        var filteredSlots;
+        if (currentDayIndex === -1) {
+            // All Days mode: merge all non-unscheduled days
+            filteredSlots = [];
+            scheduleData.days.forEach(function (day) {
+                if (day.date !== "unscheduled") {
+                    filteredSlots = filteredSlots.concat(day.slots.filter(matchesFilters));
+                }
+            });
+        } else {
+            if (!scheduleData.days[currentDayIndex]) return;
+            var day = scheduleData.days[currentDayIndex];
+            filteredSlots = day.slots.filter(matchesFilters);
+        }
 
         if (filteredSlots.length === 0) {
             noResults.classList.remove("hidden");
@@ -1068,6 +1137,7 @@
         var params = new URLSearchParams();
 
         if (currentView !== "calendar") params.set("view", currentView);
+        // -1 = "All Days" tab; 0 is the default so omit it from the URL
         if (currentDayIndex !== 0) params.set("day", String(currentDayIndex));
         if (filters.search) params.set("search", filters.search);
         if (filters.tracks.size > 0)
@@ -1106,7 +1176,7 @@
         }
 
         var day = parseInt(params.get("day"), 10);
-        if (!isNaN(day) && day >= 0) {
+        if (!isNaN(day) && day >= -1) {
             currentDayIndex = day;
         }
 

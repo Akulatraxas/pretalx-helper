@@ -253,6 +253,20 @@ def build_schedule_data(client, event_slug, schedule_version):
 
         duration = slot.get("duration")
 
+        # --- Build a stable, content-derived ID for sharing links ---
+        # For regular submissions: "{code}@{YYYY-MM-DDTHH:MM}" (minute-level ISO,
+        # no TZ — stable across re-publishes as long as the time doesn't change).
+        # For blockers (no submission code): "blk-{md5(start|end|room_id)[:8]}"
+        # so the key is tied to the blocker's position, not its DB row id.
+        if not is_blocker:
+            # Truncate to minute precision: "2026-08-18T10:00+02:00" → "2026-08-18T10:00"
+            start_minute = start[:16] if start else ""
+            stable_id = f"{code}@{start_minute}"
+        else:
+            _blk_raw = f"{start}|{end}|{room_id}"
+            _blk_hash = hashlib.md5(_blk_raw.encode()).hexdigest()[:8]
+            stable_id = f"blk-{_blk_hash}"
+
         # Determine the day
         if start:
             day_str = start[:10]  # "2026-08-14"
@@ -276,6 +290,7 @@ def build_schedule_data(client, event_slug, schedule_version):
 
         slot_obj = {
             "id": slot.get("id"),
+            "stable_id": stable_id,
             "start": start,
             "end": end,
             "duration": duration,
@@ -399,7 +414,13 @@ def api_schedule():
 
 @app.route(f"{BASE_PATH}/api/refresh", methods=["POST"])
 def api_refresh():
-    """Trigger a re-fetch of the schedule data."""
+    """Trigger a re-fetch of the schedule data.
+
+    Only available when SCHEDULE_VERSION is 'wip'. Returns 403 otherwise
+    to prevent unintended API hammering in production deployments.
+    """
+    if SCHEDULE_VERSION != "wip":
+        return jsonify({"error": "Refresh not available in this mode."}), 403
     thread = threading.Thread(target=fetch_and_cache, daemon=True)
     thread.start()
     return jsonify({"status": "refresh started"})
@@ -477,9 +498,25 @@ def api_health():
 # Kick off the initial fetch in a background thread regardless of how the app
 # is launched (gunicorn, python app.py, pytest, etc.). The daemon=True flag
 # ensures the thread won't block process exit when a SIGTERM is received.
+
+CACHE_REFRESH_INTERVAL = 3600  # seconds (1 hour)
+
+
+def _periodic_refresh():
+    """Sleep for CACHE_REFRESH_INTERVAL seconds, then re-fetch indefinitely."""
+    while True:
+        time.sleep(CACHE_REFRESH_INTERVAL)
+        logger.info("Hourly cache refresh triggered.")
+        fetch_and_cache()
+
+
 logger.info("Starting schedule data fetch in background...")
 _fetch_thread = threading.Thread(target=fetch_and_cache, daemon=True)
 _fetch_thread.start()
+
+logger.info("Starting hourly cache refresh thread (interval: %ds)...", CACHE_REFRESH_INTERVAL)
+_refresh_thread = threading.Thread(target=_periodic_refresh, daemon=True)
+_refresh_thread.start()
 
 if __name__ == "__main__":
     # NOTE: Binding to 0.0.0.0 inside the container is required for

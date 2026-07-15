@@ -93,6 +93,12 @@
                 (scheduleData.event ? scheduleData.event.name : "Schedule") +
                 " — Schedule Preview";
             document.title = eventTitle.textContent;
+            // Show refresh button only in wip mode
+            if (scheduleData.schedule_version === "wip") {
+                btnRefresh.classList.remove("hidden");
+            } else {
+                btnRefresh.classList.add("hidden");
+            }
             buildDayTabs();
             buildFilterDropdowns();
             render();
@@ -716,7 +722,7 @@
             var typeBadge = document.createElement("span");
             typeBadge.className = "card-badge badge-type";
             typeBadge.textContent = slot.submission_type;
-            badges.appendChild(typeBadge);
+            //badges.appendChild(typeBadge); // Currently not properly used in pretalx - WIP for next year's event
         }
 
         // Track badge
@@ -831,7 +837,8 @@
                 )
             );
         }
-        if (slot.submission_type) {
+        // Commented out for now as sumission_type is not properly used in pretalx - WIP for next year
+        /* if (slot.submission_type) {
             badgesContainer.appendChild(
                 makeBadge(
                     slot.submission_type,
@@ -839,7 +846,7 @@
                     "#fb923c"
                 )
             );
-        }
+        } */
         if (slot.track && slot.track.name) {
             badgesContainer.appendChild(
                 makeBadge(
@@ -977,7 +984,7 @@
         }
 
         // Update URL to include event deep-link
-        pushURLState(slot.id);
+        pushURLState(slot.stable_id);
 
         // Show modal
         detailModal.classList.remove("hidden");
@@ -1072,7 +1079,7 @@
         if (filters.rooms.size > 0)
             params.set("rooms", Array.from(filters.rooms).join(","));
         if (openEventId != null)
-            params.set("event", String(openEventId));
+            params.set("event", openEventId);
 
         var paramStr = params.toString();
         var newUrl = window.location.pathname + (paramStr ? "?" + paramStr : "");
@@ -1137,8 +1144,8 @@
             });
         }
 
-        var eventId = params.get("event");
-        return eventId ? parseInt(eventId, 10) : null;
+        var eventKey = params.get("event");
+        return eventKey || null;
     }
 
     /**
@@ -1283,12 +1290,12 @@
      * If an event ID is provided (from URL param), find and open that slot's modal.
      * Should be called after scheduleData is loaded.
      */
-    function openEventById(slotId) {
-        if (!slotId || !scheduleData || !scheduleData.days) return;
+    function openEventByStableId(stableId) {
+        if (!stableId || !scheduleData || !scheduleData.days) return;
         for (var d = 0; d < scheduleData.days.length; d++) {
             var slots = scheduleData.days[d].slots;
             for (var s = 0; s < slots.length; s++) {
-                if (slots[s].id === slotId) {
+                if (slots[s].stable_id === stableId) {
                     // Switch to the day that contains this event
                     currentDayIndex = d;
                     updateActiveDayTab();
@@ -1302,7 +1309,7 @@
 
     // --- Init ---
     // Read URL state first (sets view, day, filters) then load data.
-    var _pendingEventId = readURLState();
+    var _pendingEventKey = readURLState();
     loadData().then(function () {
         // After data loads, sync dropdown visual states for pre-loaded filters
         syncDropdownStatesFromFilters();
@@ -1310,8 +1317,8 @@
         // Re-render now that day index might have changed
         updateActiveDayTab();
         render();
-        if (_pendingEventId) {
-            openEventById(_pendingEventId);
+        if (_pendingEventKey) {
+            openEventByStableId(_pendingEventKey);
         }
     });
 })();

@@ -401,6 +401,33 @@ input {
     color: var(--text-muted);
 }
 
+.dropdown-bulk-actions {
+    display: flex;
+    gap: 4px;
+    padding: 4px 6px 6px;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 4px;
+}
+
+.dropdown-bulk-btn {
+    flex: 1;
+    background: none;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+    text-align: center;
+}
+
+.dropdown-bulk-btn:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-color: var(--border-medium);
+}
+
 .dropdown-item {
     display: flex;
     align-items: center;

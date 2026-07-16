@@ -183,6 +183,8 @@
             scheduleData.tracks || [],
             "name",
             "tracks",
+            true,
+            false,
             true
         );
         buildDropdown(
@@ -191,7 +193,9 @@
             scheduleData.tags || [],
             "tag",
             "tags",
-            false
+            false,
+            false,
+            true
         );
         buildDropdown(
             "dropdown-speakers",
@@ -200,7 +204,8 @@
             "name",
             "speakers",
             false,
-            true
+            true,
+            false
         );
         buildDropdown(
             "dropdown-rooms",
@@ -208,7 +213,9 @@
             scheduleData.rooms || [],
             "name",
             "rooms",
-            false
+            false,
+            false,
+            true
         );
     }
 
@@ -219,7 +226,8 @@
         labelKey,
         filterKey,
         showColor,
-        hasSearch
+        hasSearch,
+        showBulkActions
     ) {
         var panel = $(panelId);
         var btn = $(btnId);
@@ -246,6 +254,53 @@
             });
             searchDiv.appendChild(searchInput);
             panel.appendChild(searchDiv);
+        }
+
+        if (showBulkActions && items.length > 1) {
+            var bulkBar = document.createElement("div");
+            bulkBar.className = "dropdown-bulk-actions";
+
+            var btnSelectAll = document.createElement("button");
+            btnSelectAll.className = "dropdown-bulk-btn";
+            btnSelectAll.textContent = "Select all";
+            btnSelectAll.addEventListener("click", function (e) {
+                e.stopPropagation();
+                items.forEach(function (item) {
+                    var id = String(item.id || item.code || item[labelKey] || "");
+                    filters[filterKey].add(id);
+                });
+                panel.querySelectorAll(".dropdown-item").forEach(function (row) {
+                    row.classList.add("selected");
+                    row.setAttribute("aria-checked", "true");
+                });
+                // Re-fetch the (possibly cloned) button for state update
+                var currentBtn = $(btnId);
+                updateFilterButtonState(currentBtn, filters[filterKey]);
+                updateClearButton();
+                pushURLState();
+                render();
+            });
+            bulkBar.appendChild(btnSelectAll);
+
+            var btnClear = document.createElement("button");
+            btnClear.className = "dropdown-bulk-btn";
+            btnClear.textContent = "Clear";
+            btnClear.addEventListener("click", function (e) {
+                e.stopPropagation();
+                filters[filterKey].clear();
+                panel.querySelectorAll(".dropdown-item").forEach(function (row) {
+                    row.classList.remove("selected");
+                    row.setAttribute("aria-checked", "false");
+                });
+                var currentBtn = $(btnId);
+                updateFilterButtonState(currentBtn, filters[filterKey]);
+                updateClearButton();
+                pushURLState();
+                render();
+            });
+            bulkBar.appendChild(btnClear);
+
+            panel.appendChild(bulkBar);
         }
 
         items.forEach(function (item) {

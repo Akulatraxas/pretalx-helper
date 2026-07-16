@@ -444,10 +444,10 @@ def api_image_proxy():
     parsed_url = urllib.parse.urlparse(url)
 
     if not parsed_url.scheme or not parsed_url.netloc:
-        return Response("Invalid URL", status=400)
+        return Response("UwU No lookie...", status=400)
 
     if parsed_url.netloc != parsed_pretalx.netloc:
-        return Response("URL not allowed", status=403)
+        return Response("NSFW! - You can't look at other people's privates! >:(", status=403)
 
     # Only allow HTTPS (or HTTP if Pretalx itself is HTTP)
     allowed_schemes = {parsed_pretalx.scheme, "https"}

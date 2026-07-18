@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Resources{% endblock %}
+
+{% block content %}
+<div class="page-resources">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Resources</h1>
+            <p class="page-subtitle">Physical resources available for assignment to events</p>
+        </div>
+        {% if user and user.can_write %}
+        <button class="btn btn-primary" id="btn-add-resource" aria-expanded="false">
+            <span>+</span> Add Resource
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Add / Edit form panel -->
+    <div class="form-panel hidden" id="resource-form-panel" aria-label="Resource form">
+        <div class="form-panel-inner">
+            <h2 class="form-panel-title" id="form-panel-title">New Resource</h2>
+            <form id="resource-form" novalidate>
+                <input type="hidden" id="form-resource-id">
+
+                <div class="form-group">
+                    <label class="form-label" for="form-resource-name">Name</label>
+                    <input class="form-input" type="text" id="form-resource-name"
+                           placeholder="e.g. Projector, Floor Fan, Laptop…" autocomplete="off" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="form-resource-amount">
+                        Amount
+                        <span class="form-hint">Set to 0 for infinite (no conflict detection)</span>
+                    </label>
+                    <input class="form-input form-input-sm" type="number" id="form-resource-amount"
+                           min="0" value="0" placeholder="0 = ∞">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Departments</label>
+                    <div class="checkbox-group" id="form-dept-checkboxes">
+                        {% for dept in departments %}
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="dept-checkbox" value="{{ dept }}">
+                            <span class="dept-pill dept-{{ dept | lower | replace(' ', '-') | replace('/', '-') }}">{{ dept }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="form-submit-btn">Create</button>
+                    <button type="button" class="btn btn-ghost" id="form-cancel-btn">Cancel</button>
+                    <button type="button" class="btn btn-danger hidden" id="form-delete-btn">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resources table -->
+    <div class="table-container">
+        <table class="data-table" id="resources-table" aria-label="Resources list">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Amount</th>
+                    <th>Departments</th>
+                    <th>Assigned To</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="resources-tbody">
+                <tr class="table-placeholder">
+                    <td colspan="5">
+                        <div class="loading-spinner"></div>
+                        Loading resources…
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ base_path }}/static/js/resources.js"></script>
+{% endblock %}

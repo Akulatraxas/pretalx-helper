@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Events{% endblock %}
+
+{% block content %}
+<div class="page-events">
+
+    <!-- Left: searchable event list -->
+    <div class="events-list-pane" id="events-list-pane">
+        <div class="list-search-bar">
+            <input class="search-input" type="search" id="event-search"
+                   placeholder="Search events, codes, speakers…" autocomplete="off"
+                   aria-label="Search events">
+            <span class="search-meta" id="search-meta">Loading…</span>
+        </div>
+
+        <div class="events-list-filters">
+            <label class="filter-toggle" title="Only show events with resources or comments">
+                <input type="checkbox" id="filter-has-data"> Only assigned
+            </label>
+            <label class="filter-toggle" title="Only show events with conflicts">
+                <input type="checkbox" id="filter-has-conflict"> ⚠ Conflicts only
+            </label>
+        </div>
+
+        <ul class="events-list" id="events-list" role="listbox" aria-label="Events">
+            <li class="list-placeholder" id="list-placeholder">
+                <div class="loading-spinner"></div>
+                Fetching schedule…
+            </li>
+        </ul>
+    </div>
+
+    <!-- Right: assignment panel -->
+    <div class="events-detail-pane" id="events-detail-pane">
+        <div class="detail-empty" id="detail-empty">
+            <div class="detail-empty-icon">📋</div>
+            <p>Select an event from the list to assign resources and comments.</p>
+        </div>
+
+        <div class="detail-panel hidden" id="detail-panel">
+
+            <!-- Event header -->
+            <div class="detail-header" id="detail-header">
+                <div class="detail-track-bar" id="detail-track-bar"></div>
+                <div class="detail-header-content">
+                    <div class="detail-code" id="detail-code"></div>
+                    <h2 class="detail-title" id="detail-title"></h2>
+                    <div class="detail-meta" id="detail-meta"></div>
+                </div>
+                <div class="conflict-banner hidden" id="detail-conflict-banner">
+                    ⚠ Resource conflict detected
+                </div>
+            </div>
+
+            <!-- Slots -->
+            <section class="detail-section" id="detail-slots-section">
+                <h3 class="section-title">Schedule</h3>
+                <div class="slots-list" id="detail-slots"></div>
+            </section>
+
+            <!-- Speakers -->
+            <section class="detail-section" id="detail-speakers-section">
+                <h3 class="section-title">Speakers</h3>
+                <div class="speakers-list" id="detail-speakers"></div>
+            </section>
+
+            <!-- Resources -->
+            <section class="detail-section" id="detail-resources-section">
+                <h3 class="section-title">Resources</h3>
+
+                {% if user and user.can_write %}
+                <div class="resource-add-row" id="resource-add-row">
+                    <div class="autocomplete-wrapper">
+                        <input class="form-input" type="text" id="resource-search-input"
+                               placeholder="Type to search resources…" autocomplete="off"
+                               aria-label="Search resources to add" aria-autocomplete="list"
+                               aria-controls="resource-dropdown">
+                        <ul class="autocomplete-dropdown hidden" id="resource-dropdown" role="listbox"></ul>
+                    </div>
+                    <input class="form-input form-input-note" type="text" id="resource-note-input"
+                           placeholder="Note (optional, shown in brackets)" autocomplete="off">
+                    <select class="form-select form-select-sm" id="resource-dept-override">
+                        <option value="">— dept from resource —</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept }}">{{ dept }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-primary btn-sm" id="resource-add-btn" disabled>Add</button>
+                </div>
+                {% endif %}
+
+                <ul class="assignment-list" id="resources-assignment-list">
+                    <li class="assignment-empty">No resources assigned yet.</li>
+                </ul>
+            </section>
+
+            <!-- Comments -->
+            <section class="detail-section" id="detail-comments-section">
+                <h3 class="section-title">Comments</h3>
+
+                {% if user and user.can_write %}
+                <div class="comment-add-row" id="comment-add-row">
+                    <textarea class="form-input form-textarea" id="comment-text-input"
+                              placeholder="Add a note or instruction…" rows="2"></textarea>
+                    <div class="comment-add-controls">
+                        <select class="form-select" id="comment-dept-select">
+                            {% for dept in departments %}
+                            <option value="{{ dept }}" {% if loop.first %}selected{% endif %}>{{ dept }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn-primary btn-sm" id="comment-add-btn">Add Comment</button>
+                    </div>
+                </div>
+                {% endif %}
+
+                <ul class="assignment-list" id="comments-assignment-list">
+                    <li class="assignment-empty">No comments yet.</li>
+                </ul>
+            </section>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ base_path }}/static/js/events.js"></script>
+{% endblock %}

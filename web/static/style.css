@@ -96,6 +96,7 @@
 
     /* Spacing */
     --header-height: 180px;
+    --room-header-height: 42px; /* height of sticky .room-column-header */
 }
 
 /* --- Reset & Base --- */
@@ -159,6 +160,178 @@ input {
 /* ============================================
    HEADER
    ============================================ */
+/* ---- Timeline room view layout ---- */
+
+/*
+ * .rooms-timeline-container: flex row holding the sticky time axis + the
+ * horizontally-scrollable columns area. The time axis stays fixed on the left
+ * while the columns scroll.
+ */
+.rooms-timeline-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    overflow: hidden; /* clip; the inner columnsArea handles horizontal scroll */
+}
+
+/*
+ * Horizontally-scrollable room columns area.
+ * Fills all space to the right of the time axis.
+ */
+.rooms-timeline-columns {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-medium) transparent;
+    /* Small top gap so gridlines peek above the column header */
+    padding-top: 0;
+}
+
+/* Time axis ruler on the left */
+.time-axis {
+    flex-shrink: 0;
+    width: 60px;
+    position: relative;
+    /* Offset by the room column header height so labels line up with events */
+    padding-top: var(--room-header-height);
+    /* Background line to visually separate axis from columns */
+    border-right: 1px solid var(--border-subtle);
+    margin-right: 12px;
+}
+
+.time-axis-label {
+    position: absolute;
+    right: 8px;
+    transform: translateY(-50%);
+    font-size: 0.68rem;
+    font-weight: 500;
+    white-space: nowrap;
+    line-height: 1;
+    /* Shift text so it aligns with the gridline */
+    pointer-events: none;
+}
+
+.time-axis-label-hour {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.time-axis-label-half {
+    color: var(--text-muted);
+    font-size: 0.63rem;
+}
+
+/* The rooms-grid inside the columns area (unchanged grid behaviour) */
+.rooms-grid {
+    display: grid;
+    gap: 12px;
+    padding-bottom: 16px;
+    /* Note: overflow-x is now handled by .rooms-timeline-columns wrapper */
+}
+
+/* Room column */
+.room-column {
+    min-width: 280px;
+}
+
+.room-column-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 10px 14px;
+    background: var(--bg-surface);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border: 1px solid var(--border-subtle);
+    border-bottom: 2px solid var(--accent-primary);
+    margin-bottom: 0;
+}
+
+.room-column-header h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Timeline slot container: fixed height, events absolutely positioned inside */
+.room-slots-timeline {
+    position: relative;
+    /* height set inline by JS */
+}
+
+/* Horizontal time gridlines inside each room column */
+.time-gridline {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--border-subtle);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.time-gridline-hour {
+    background: var(--border-medium);
+}
+
+/* ---- Timeline event card ---- */
+.event-card-timeline {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    /* top and height set inline by JS */
+    padding: 6px 10px 6px 10px;
+    z-index: 2;
+    box-sizing: border-box;
+    /* Disable the calendar-view hover lift (too jumpy in a tight grid) */
+    transition: background var(--transition-fast), border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.event-card-timeline:hover {
+    transform: none; /* override .event-card:hover translateY(-2px) */
+    box-shadow: var(--shadow-md);
+    z-index: 3;
+    border-color: var(--border-medium);
+    background: var(--bg-card-hover);
+}
+
+/* Inner content wrapper clips overflow gracefully */
+.timeline-card-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Time label style inside timeline cards */
+.card-time-timeline {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    letter-spacing: 0.01em;
+    flex-shrink: 0;
+}
+
+/* Card title in timeline — allows more lines when card is tall */
+.event-card-timeline .card-title {
+    font-size: 0.85rem;
+    margin-bottom: 0;
+    /* Override the 2-line clamp from base — we let height do the clipping */
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+}
+
+/* Speaker row in timeline cards — smaller to save space */
+.event-card-timeline .card-speaker {
+    font-size: 0.75rem;
+}
+
 .app-header {
     position: sticky;
     top: 0;
@@ -741,7 +914,6 @@ input {
 }
 
 /* Show left fade when scrolled */
-.rooms-scroll-wrapper.has-scroll .scroll-indicator-left.visible ~ .rooms-grid ~ .dummy,
 .rooms-scroll-wrapper.has-scroll:has(.scroll-indicator-left.visible)::before {
     opacity: 1;
 }
@@ -787,44 +959,6 @@ input {
 
 .scroll-indicator-right {
     right: -6px;
-}
-
-.rooms-grid {
-    display: grid;
-    gap: 16px;
-    overflow-x: auto;
-    padding-bottom: 16px;
-    scroll-behavior: smooth;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-medium) transparent;
-}
-
-.room-column {
-    min-width: 300px;
-}
-
-.room-column-header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    padding: 12px 16px;
-    background: var(--bg-surface);
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-    border: 1px solid var(--border-subtle);
-    border-bottom: 2px solid var(--accent-primary);
-    margin-bottom: 8px;
-}
-
-.room-column-header h3 {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.room-slots {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
 }
 
 /* ============================================

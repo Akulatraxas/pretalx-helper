@@ -401,6 +401,14 @@ def index():
     return send_from_directory("static", "index.html")
 
 
+@app.route(f"{BASE_PATH}/api/debug/headers")
+def api_debug_headers():
+    """Dump all incoming request headers as plain text (debug only)."""
+    lines = [f"{name}: {value}" for name, value in sorted(request.headers)]
+    body = "\n".join(lines)
+    return Response(body, content_type="text/plain; charset=utf-8")
+
+
 @app.route(f"{BASE_PATH}/api/schedule")
 def api_schedule():
     """Return the cached schedule data as JSON."""

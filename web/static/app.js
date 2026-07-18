@@ -658,24 +658,41 @@
         });
     }
 
+    /**
+     * Timeline-based rooms view.
+     * Each room column positions events absolutely according to their start time
+     * and sizes them by duration. Events at the same time align horizontally.
+     * Scale: TIMELINE_PX_PER_MIN px per minute (3 px/min → 60 min = 180 px).
+     */
+    var TIMELINE_PX_PER_MIN = 3;
+    // Minimum card height so very short events stay readable
+    var TIMELINE_MIN_CARD_HEIGHT = 50;
+    // Padding at top and bottom of the timeline area (px)
+    var TIMELINE_PADDING = 16;
+    // Width of the time-axis column (px)
+    var TIMELINE_AXIS_WIDTH = 64;
+
+    /**
+     * Convert a slot's ISO start/end strings into minutes-since-midnight.
+     * Returns null if the string is missing or unparseable.
+     */
+    function slotToMinutes(isoString) {
+        if (!isoString) return null;
+        var timePart = isoString.substring(11, 16); // "HH:MM"
+        var parts = timePart.split(":");
+        if (parts.length < 2) return null;
+        return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    }
+
     function renderRoomsView() {
         viewRooms.replaceChildren();
         if (!scheduleData.days || !scheduleData.rooms) return;
 
-        var filteredSlots;
-        if (currentDayIndex === -1) {
-            // All Days mode: merge all non-unscheduled days
-            filteredSlots = [];
-            scheduleData.days.forEach(function (day) {
-                if (day.date !== "unscheduled") {
-                    filteredSlots = filteredSlots.concat(day.slots.filter(matchesFilters));
-                }
-            });
-        } else {
-            if (!scheduleData.days[currentDayIndex]) return;
-            var day = scheduleData.days[currentDayIndex];
-            filteredSlots = day.slots.filter(matchesFilters);
-        }
+        // In "All Days" mode, fall back to day 0 (timeline across days doesn't make sense)
+        var effectiveDayIndex = currentDayIndex === -1 ? 0 : currentDayIndex;
+        if (!scheduleData.days[effectiveDayIndex]) return;
+        var day = scheduleData.days[effectiveDayIndex];
+        var filteredSlots = day.slots.filter(matchesFilters);
 
         if (filteredSlots.length === 0) {
             noResults.classList.remove("hidden");
@@ -683,13 +700,31 @@
         }
         noResults.classList.add("hidden");
 
+        // Compute day time range across all visible slots
+        var dayStart = Infinity;
+        var dayEnd = -Infinity;
+        filteredSlots.forEach(function (slot) {
+            var start = slotToMinutes(slot.start);
+            var end = slotToMinutes(slot.end);
+            if (start !== null && start < dayStart) dayStart = start;
+            if (end !== null && end > dayEnd) dayEnd = end;
+        });
+        if (!isFinite(dayStart) || !isFinite(dayEnd)) {
+            dayStart = 0;
+            dayEnd = 60;
+        }
+        // Round down to nearest 30-min interval for a clean ruler start
+        dayStart = Math.floor(dayStart / 30) * 30;
+        // Round up to nearest 30-min interval for a clean ruler end
+        dayEnd = Math.ceil(dayEnd / 30) * 30;
+        var totalMinutes = dayEnd - dayStart;
+        var timelineHeight = totalMinutes * TIMELINE_PX_PER_MIN + TIMELINE_PADDING * 2;
+
         // Group by room
         var roomSlots = {};
         filteredSlots.forEach(function (slot) {
             var roomId = slot.room ? String(slot.room.id) : "none";
-            if (!roomSlots[roomId]) {
-                roomSlots[roomId] = [];
-            }
+            if (!roomSlots[roomId]) roomSlots[roomId] = [];
             roomSlots[roomId].push(slot);
         });
 
@@ -698,68 +733,10 @@
             if (filters.rooms.size === 0) return true;
             return filters.rooms.has(String(room.id));
         });
+        // Only include rooms that have at least one slot on this day
+        // (after filtering, some rooms may be empty — keep them to show the column)
 
-        // Create a scroll wrapper with indicators
-        var scrollWrapper = document.createElement("div");
-        scrollWrapper.className = "rooms-scroll-wrapper";
-
-        // Determine column count
-        var roomCount = visibleRooms.length;
-        var grid = document.createElement("div");
-        grid.className = "rooms-grid";
-        grid.style.gridTemplateColumns =
-            "repeat(" + Math.max(roomCount, 1) + ", minmax(300px, 1fr))";
-
-        visibleRooms.forEach(function (room) {
-            var roomId = String(room.id);
-            var slots = roomSlots[roomId] || [];
-
-            var column = document.createElement("div");
-            column.className = "room-column";
-
-            var colHeader = document.createElement("div");
-            colHeader.className = "room-column-header";
-            var colTitle = document.createElement("h3");
-            colTitle.textContent = room.name;
-            colHeader.appendChild(colTitle);
-            column.appendChild(colHeader);
-
-            var slotsContainer = document.createElement("div");
-            slotsContainer.className = "room-slots";
-
-            slots.forEach(function (slot) {
-                slotsContainer.appendChild(createEventCard(slot, true));
-            });
-
-            column.appendChild(slotsContainer);
-            grid.appendChild(column);
-        });
-
-        // Left scroll indicator
-        var leftIndicator = document.createElement("div");
-        leftIndicator.className = "scroll-indicator scroll-indicator-left";
-        leftIndicator.setAttribute("aria-hidden", "true");
-        var leftArrow = createSVGIcon(
-            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>'
-        );
-        leftIndicator.appendChild(leftArrow);
-        leftIndicator.addEventListener("click", function () {
-            grid.scrollBy({ left: -320, behavior: "smooth" });
-        });
-
-        // Right scroll indicator
-        var rightIndicator = document.createElement("div");
-        rightIndicator.className = "scroll-indicator scroll-indicator-right";
-        rightIndicator.setAttribute("aria-hidden", "true");
-        var rightArrow = createSVGIcon(
-            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>'
-        );
-        rightIndicator.appendChild(rightArrow);
-        rightIndicator.addEventListener("click", function () {
-            grid.scrollBy({ left: 320, behavior: "smooth" });
-        });
-
-        // Scroll hint text for first-time users
+        // --- Build the scroll hint banner ---
         var scrollHint = document.createElement("div");
         scrollHint.className = "scroll-hint";
         var hintIcon = createSVGIcon(
@@ -769,43 +746,236 @@
         var hintText = document.createElement("span");
         hintText.textContent = "Scroll horizontally to see all rooms";
         scrollHint.appendChild(hintText);
+        viewRooms.appendChild(scrollHint);
 
+        // --- Outer scroll wrapper (holds left/right indicators + scrollable area) ---
+        var scrollWrapper = document.createElement("div");
+        scrollWrapper.className = "rooms-scroll-wrapper";
+
+        // --- Timeline container: time axis + room columns ---
+        var timelineContainer = document.createElement("div");
+        timelineContainer.className = "rooms-timeline-container";
+
+        // ---- Time axis (left column) ----
+        // Must be tall enough to include the CSS padding-top offset for the header
+        var TIMELINE_HEADER_OFFSET = 42; // matches --room-header-height in CSS
+        var timeAxis = document.createElement("div");
+        timeAxis.className = "time-axis";
+        timeAxis.style.height = (timelineHeight + TIMELINE_HEADER_OFFSET) + "px";
+
+        // Generate ruler marks every 30 min
+        for (var m = 0; m <= totalMinutes; m += 30) {
+            var absMin = dayStart + m;
+            var hh = Math.floor(absMin / 60);
+            var mm = absMin % 60;
+            var topPx = TIMELINE_PADDING + m * TIMELINE_PX_PER_MIN;
+
+            var label = document.createElement("div");
+            label.className = "time-axis-label" + (mm === 0 ? " time-axis-label-hour" : " time-axis-label-half");
+            label.style.top = topPx + "px";
+            var timeStr = String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0");
+            label.textContent = timeStr;
+            timeAxis.appendChild(label);
+        }
+
+        timelineContainer.appendChild(timeAxis);
+
+        // ---- Room columns area (scrollable horizontally) ----
+        var roomCount = visibleRooms.length;
+        var columnsArea = document.createElement("div");
+        columnsArea.className = "rooms-timeline-columns";
+
+        // Grid for room columns
+        var grid = document.createElement("div");
+        grid.className = "rooms-grid rooms-grid-timeline";
+        grid.style.gridTemplateColumns =
+            "repeat(" + Math.max(roomCount, 1) + ", minmax(280px, 1fr))";
+
+        // Horizontal time gridlines layer (behind all cards)
+        // These are rendered inside each column via a pseudo-element pattern in CSS,
+        // but we add them to a shared overlay that spans all columns.
+        // Simpler: render grid lines inside each room column.
+
+        visibleRooms.forEach(function (room) {
+            var roomId = String(room.id);
+            var slots = roomSlots[roomId] || [];
+
+            var column = document.createElement("div");
+            column.className = "room-column";
+
+            // Sticky column header
+            var colHeader = document.createElement("div");
+            colHeader.className = "room-column-header";
+            var colTitle = document.createElement("h3");
+            colTitle.textContent = room.name;
+            colHeader.appendChild(colTitle);
+            column.appendChild(colHeader);
+
+            // Timeline slots container
+            var slotsContainer = document.createElement("div");
+            slotsContainer.className = "room-slots-timeline";
+            slotsContainer.style.height = timelineHeight + "px";
+
+            // Draw gridlines (30-min = dashed, 60-min = solid)
+            for (var m = 0; m <= totalMinutes; m += 30) {
+                var topPx = TIMELINE_PADDING + m * TIMELINE_PX_PER_MIN;
+                var gridLine = document.createElement("div");
+                var isHour = (dayStart + m) % 60 === 0;
+                gridLine.className = "time-gridline" + (isHour ? " time-gridline-hour" : "");
+                gridLine.style.top = topPx + "px";
+                slotsContainer.appendChild(gridLine);
+            }
+
+            // Position event cards
+            slots.forEach(function (slot) {
+                slotsContainer.appendChild(
+                    createTimelineCard(slot, dayStart)
+                );
+            });
+
+            column.appendChild(slotsContainer);
+            grid.appendChild(column);
+        });
+
+        columnsArea.appendChild(grid);
+        timelineContainer.appendChild(columnsArea);
+        scrollWrapper.appendChild(timelineContainer);
+
+        // --- Scroll indicators ---
+        var leftIndicator = document.createElement("div");
+        leftIndicator.className = "scroll-indicator scroll-indicator-left";
+        leftIndicator.setAttribute("aria-hidden", "true");
+        leftIndicator.appendChild(createSVGIcon(
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>'
+        ));
+        leftIndicator.addEventListener("click", function () {
+            columnsArea.scrollBy({ left: -320, behavior: "smooth" });
+        });
         scrollWrapper.appendChild(leftIndicator);
-        scrollWrapper.appendChild(grid);
+
+        var rightIndicator = document.createElement("div");
+        rightIndicator.className = "scroll-indicator scroll-indicator-right";
+        rightIndicator.setAttribute("aria-hidden", "true");
+        rightIndicator.appendChild(createSVGIcon(
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>'
+        ));
+        rightIndicator.addEventListener("click", function () {
+            columnsArea.scrollBy({ left: 320, behavior: "smooth" });
+        });
         scrollWrapper.appendChild(rightIndicator);
 
-        viewRooms.appendChild(scrollHint);
         viewRooms.appendChild(scrollWrapper);
 
-        // Update scroll indicator visibility
+        // --- Scroll indicator visibility ---
         function updateScrollIndicators() {
-            var scrollLeft = grid.scrollLeft;
-            var maxScroll = grid.scrollWidth - grid.clientWidth;
+            var scrollLeft = columnsArea.scrollLeft;
+            var maxScroll = columnsArea.scrollWidth - columnsArea.clientWidth;
 
             if (maxScroll <= 5) {
-                // No scrolling needed — hide everything
                 leftIndicator.classList.remove("visible");
                 rightIndicator.classList.remove("visible");
                 scrollHint.classList.add("hidden");
                 scrollWrapper.classList.remove("has-scroll");
             } else {
                 scrollWrapper.classList.add("has-scroll");
-                // Show/hide scroll hint (only hide after first scroll)
-                if (scrollLeft > 10) {
-                    scrollHint.classList.add("hidden");
-                }
+                if (scrollLeft > 10) scrollHint.classList.add("hidden");
                 leftIndicator.classList.toggle("visible", scrollLeft > 10);
                 rightIndicator.classList.toggle("visible", scrollLeft < maxScroll - 10);
             }
         }
 
-        grid.addEventListener("scroll", updateScrollIndicators, { passive: true });
-        // Initial check after layout
+        columnsArea.addEventListener("scroll", updateScrollIndicators, { passive: true });
         requestAnimationFrame(function () {
             updateScrollIndicators();
         });
-        // Also check on resize
         window.addEventListener("resize", updateScrollIndicators);
+    }
+
+    /**
+     * Create an absolutely-positioned event card for the timeline room view.
+     * @param {Object} slot       - The slot data object
+     * @param {number} dayStart   - Minutes-since-midnight for the top of the timeline
+     */
+    function createTimelineCard(slot, dayStart) {
+        var startMin = slotToMinutes(slot.start);
+        var endMin = slotToMinutes(slot.end);
+        var duration = slot.duration || 60;
+
+        // Compute pixel position
+        var topOffset = startMin !== null
+            ? TIMELINE_PADDING + (startMin - dayStart) * TIMELINE_PX_PER_MIN
+            : TIMELINE_PADDING;
+        var cardHeight = Math.max(
+            duration * TIMELINE_PX_PER_MIN,
+            TIMELINE_MIN_CARD_HEIGHT
+        );
+        // Subtract a small gap so adjacent cards don't merge visually
+        var cardHeightWithGap = cardHeight - 4;
+
+        var card = document.createElement("div");
+        card.className = "event-card event-card-timeline";
+        if (slot.is_blocker) card.classList.add("is-blocker");
+
+        var trackColor = slot.track && slot.track.color ? slot.track.color : "#64748b";
+        card.style.setProperty("--card-track-color", trackColor);
+        card.style.top = topOffset + "px";
+        card.style.height = cardHeightWithGap + "px";
+
+        // Track color accent (top bar via ::before is inherited from .event-card)
+
+        // Content wrapper (clips overflow)
+        var inner = document.createElement("div");
+        inner.className = "timeline-card-inner";
+
+        // Time label (always shown in timeline cards)
+        if (slot.start && slot.end) {
+            var timeDiv = document.createElement("div");
+            timeDiv.className = "card-time card-time-timeline";
+            timeDiv.textContent =
+                slot.start.substring(11, 16) + " – " + slot.end.substring(11, 16);
+            inner.appendChild(timeDiv);
+        }
+
+        // Track badge
+        if (slot.track && slot.track.name) {
+            var trackBadge = document.createElement("span");
+            trackBadge.className = "card-badge badge-track";
+            trackBadge.style.backgroundColor = hexToRGBA(trackColor, 0.25);
+            trackBadge.style.color = lightenColor(trackColor);
+            trackBadge.textContent = slot.track.name;
+            inner.appendChild(trackBadge);
+        }
+
+        // Title
+        var title = document.createElement("div");
+        title.className = "card-title";
+        title.textContent = slot.title || "Untitled";
+        inner.appendChild(title);
+
+        // First speaker
+        if (slot.speakers && slot.speakers.length > 0) {
+            var speakerDiv = document.createElement("div");
+            speakerDiv.className = "card-speaker";
+            var dot = document.createElement("span");
+            dot.className = "speaker-dot";
+            dot.style.backgroundColor = stringToHSL(slot.speakers[0].name || "");
+            speakerDiv.appendChild(dot);
+            var nameSpan = document.createElement("span");
+            nameSpan.textContent = slot.speakers[0].name || "Unknown";
+            if (slot.speakers.length > 1) {
+                nameSpan.textContent += " +" + (slot.speakers.length - 1);
+            }
+            speakerDiv.appendChild(nameSpan);
+            inner.appendChild(speakerDiv);
+        }
+
+        card.appendChild(inner);
+
+        card.addEventListener("click", function () {
+            openDetailModal(slot);
+        });
+
+        return card;
     }
 
     // --- Event Card Creation ---

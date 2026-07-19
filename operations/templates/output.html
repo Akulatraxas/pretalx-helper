@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Output{% endblock %}
+
+{% block content %}
+<div class="page-output">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Output Lists</h1>
+            <p class="page-subtitle">Per-department resource and comment lists for all events</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-ghost btn-sm" id="btn-export-csv">
+                ↓ Export CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- Department tabs -->
+    <div class="dept-tabs" role="tablist" aria-label="Department filter">
+        <button class="dept-tab active" role="tab" data-dept="all" id="tab-all"
+                aria-selected="true" aria-controls="output-table-container">All</button>
+        {% for dept in departments %}
+        <button class="dept-tab" role="tab" data-dept="{{ dept }}"
+                id="tab-{{ dept | lower | replace(' ', '-') | replace('/', '-') }}"
+                aria-selected="false" aria-controls="output-table-container">
+            <span class="dept-pill dept-{{ dept | lower | replace(' ', '-') | replace('/', '-') }}">{{ dept }}</span>
+        </button>
+        {% endfor %}
+    </div>
+
+    <!-- Output table -->
+    <div class="table-container scrollable-table" id="output-table-container" role="tabpanel">
+        <table class="data-table output-table" id="output-table" aria-label="Events output">
+            <thead>
+                <tr>
+                    <th class="col-day">Day</th>
+                    <th class="col-time">Time</th>
+                    <th class="col-room">Room</th>
+                    <th class="col-code">Code</th>
+                    <th class="col-title">Title</th>
+                    <th class="col-speakers">Speakers</th>
+                    <th class="col-resources">Resources</th>
+                    <th class="col-comments">Comments</th>
+                </tr>
+            </thead>
+            <tbody id="output-tbody">
+                <tr class="table-placeholder">
+                    <td colspan="8">
+                        <div class="loading-spinner"></div>
+                        Loading…
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="table-empty hidden" id="output-empty">
+            <div class="empty-icon">📭</div>
+            <p>No events with resources or comments for this department.</p>
+        </div>
+    </div>
+
+    <div class="output-footer" id="output-footer"></div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ base_path }}/static/js/output.js"></script>
+{% endblock %}

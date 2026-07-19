@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Operations{% endblock %} — EF Operations</title>
+    <meta name="description" content="Staff resource management for Eurofurence convention operations">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="{{ base_path }}/static/style.css">
+</head>
+<body>
+
+<header class="app-header">
+    <div class="header-inner">
+        <div class="header-brand">
+            <span class="brand-icon">⚙</span>
+            <span class="brand-title">Operations</span>
+            <span class="brand-subtitle" id="event-name-badge">—</span>
+        </div>
+
+        <nav class="main-nav" role="navigation" aria-label="Main navigation">
+            <a href="{{ base_path }}/events"     class="nav-link {% if page == 'events' %}active{% endif %}"     id="nav-events">
+                <span class="nav-icon">📋</span> Events
+                <span class="conflict-badge hidden" id="nav-conflict-badge">0</span>
+            </a>
+            <a href="{{ base_path }}/resources"  class="nav-link {% if page == 'resources' %}active{% endif %}"  id="nav-resources">
+                <span class="nav-icon">📦</span> Resources
+            </a>
+            <a href="{{ base_path }}/output"     class="nav-link {% if page == 'output' %}active{% endif %}"     id="nav-output">
+                <span class="nav-icon">📄</span> Output
+            </a>
+            <a href="{{ base_path }}/operations" class="nav-link {% if page == 'operations' %}active{% endif %}" id="nav-operations">
+                <span class="nav-icon">🎯</span> Operations
+            </a>
+        </nav>
+
+        <div class="header-right">
+            <div class="cache-status" id="cache-status" title="Schedule cache status">
+                <span class="status-dot" id="cache-dot"></span>
+                <span class="status-label" id="cache-label">Loading…</span>
+            </div>
+            {% if user %}
+            <div class="user-badge" title="{{ user.email }}">
+                <span class="user-avatar">{{ (user.username or user.email or '?')[0].upper() }}</span>
+                <span class="user-name">{{ user.username or user.email }}</span>
+                {% if user.can_write %}
+                <span class="user-role write" title="Read/Write">RW</span>
+                {% else %}
+                <span class="user-role read" title="Read only">RO</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</header>
+
+<main class="main-content" id="main-content">
+    {% block content %}{% endblock %}
+</main>
+
+<div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+<!--
+    Server-side values are passed as data-* attributes on the common.js <script> tag.
+    common.js reads them synchronously to define the globals BASE_PATH, DEPARTMENTS,
+    CAN_WRITE. No inline <script> blocks → no CSP 'unsafe-inline' required.
+-->
+<script src="{{ base_path }}/static/js/common.js"
+        id="common-script"
+        data-base-path="{{ base_path }}"
+        data-departments="{{ departments | tojson | forceescape }}"
+        data-can-write="{{ 'true' if (user and user.can_write) else 'false' }}">
+</script>
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

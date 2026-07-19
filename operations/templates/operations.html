@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Operations{% endblock %}
+
+{% block content %}
+<div class="page-operations">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Operations View</h1>
+            <p class="page-subtitle">Upcoming events with their resource requirements</p>
+        </div>
+        <div class="header-actions ops-controls">
+            <label class="form-label-inline">Next</label>
+            <select class="form-select form-select-sm" id="hours-select" aria-label="Timeframe">
+                <option value="1">1 hour</option>
+                <option value="2">2 hours</option>
+                <option value="4" selected>4 hours</option>
+                <option value="6">6 hours</option>
+                <option value="8">8 hours</option>
+                <option value="12">12 hours</option>
+                <option value="24">24 hours</option>
+            </select>
+            <label class="filter-toggle" title="Show all events, not just those with resources">
+                <input type="checkbox" id="ops-show-all"> Show all
+            </label>
+            <label class="filter-toggle ops-test-toggle" title="Override reference time for testing">
+                <input type="checkbox" id="ops-test-mode"> 🧪 Test mode
+            </label>
+            <input class="form-input form-input-sm ops-test-at hidden" type="datetime-local"
+                   id="ops-test-at" title="Reference 'now' for test mode" aria-label="Test reference time">
+            <button class="btn btn-ghost btn-sm" id="ops-refresh-btn" title="Refresh">↻ Refresh</button>
+            <button class="btn btn-primary btn-sm" id="ops-print-btn">🖨 Print Kanban</button>
+        </div>
+    </div>
+
+    <div class="ops-status-bar" id="ops-status-bar">
+        <span id="ops-count-label">Loading…</span>
+        <span class="status-dot loading" id="ops-live-dot" title="Auto-refreshes every 5 minutes"></span>
+        <span class="test-mode-badge hidden" id="ops-test-badge">🧪 Test mode — reference time override active</span>
+    </div>
+
+    <!-- Cards grid (screen) -->
+    <div class="kanban-grid" id="kanban-grid">
+        <div class="ops-placeholder" id="ops-placeholder">
+            <div class="loading-spinner"></div>
+            Fetching upcoming events…
+        </div>
+    </div>
+
+    <!-- Print-only section — rendered same as cards grid but wrapped for print layout -->
+    <div class="print-area hidden" id="print-area" aria-hidden="true">
+        <div class="print-header">
+            <h1 class="print-title" id="print-title">Operations — Upcoming Events</h1>
+            <div class="print-meta" id="print-meta"></div>
+        </div>
+        <div class="print-cards" id="print-cards"></div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ base_path }}/static/js/operations.js"></script>
+{% endblock %}

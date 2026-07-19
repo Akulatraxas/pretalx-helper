@@ -389,6 +389,81 @@ def main():
                         sub_title = "Unknown Submission"
                 
                 print(f"  {C_YELLOW}{'Unscheduled':<13}{C_RESET} | {C_YELLOW}{room_name:<16}{C_RESET} | [{C_CYAN}{sub_code}{C_RESET}] {C_BOLD}{sub_title}{C_RESET}")
+
+        # --- Statistics ---
+        print(f"\n{C_HEADER}{C_BOLD}{'=' * 70}{C_RESET}")
+        print(f"{C_BLUE}{C_BOLD}>>> Statistics{C_RESET}")
+        print(f"{C_HEADER}{C_BOLD}{'=' * 70}{C_RESET}")
+
+        unique_submissions = set()
+        unique_speakers = set()
+        unique_rooms = set()
+        total_duration_mins = 0
+        slots_per_day = {}
+
+        for slot in slots:
+            # Rooms
+            room_data = slot.get("room")
+            if isinstance(room_data, dict):
+                room_label = format_localized(room_data.get("name")) or str(room_data.get("id", ""))
+                if room_label:
+                    unique_rooms.add(room_label)
+
+            # Duration
+            dur = slot.get("duration")
+            if dur is not None:
+                try:
+                    total_duration_mins += int(dur)
+                except (ValueError, TypeError):
+                    pass
+
+            # Slots per day
+            start = slot.get("start")
+            day_label = format_day(start) if start else "Unscheduled"
+            slots_per_day[day_label] = slots_per_day.get(day_label, 0) + 1
+
+            # Submissions & speakers (only real submissions, not blockers)
+            sub_data = slot.get("submission")
+            if isinstance(sub_data, dict):
+                code = sub_data.get("code")
+                if code:
+                    unique_submissions.add(code)
+                for sp in sub_data.get("speakers", []):
+                    if isinstance(sp, dict):
+                        sp_key = sp.get("code") or sp.get("name")
+                    else:
+                        sp_key = str(sp)
+                    if sp_key:
+                        unique_speakers.add(sp_key)
+
+        total_slots = len(slots)
+        hours, mins = divmod(total_duration_mins, 60)
+        runtime_str = f"{hours}h {mins:02d}m" if hours else f"{mins}m"
+
+        stat_rows = [
+            ("Total Slots",        str(total_slots)),
+            ("Submissions",        str(len(unique_submissions))),
+            ("Speakers",           str(len(unique_speakers))),
+            ("Rooms Used",         str(len(unique_rooms))),
+            ("Total Runtime",      runtime_str),
+            ("Conference Days",    str(len([d for d in slots_per_day if d != "Unscheduled"]))),
+        ]
+        if unscheduled_slots:
+            stat_rows.append(("Unscheduled Slots", str(len(unscheduled_slots))))
+
+        for label, value in stat_rows:
+            print(f"  {C_BOLD}{label:<18}:{C_RESET} {C_CYAN}{value}{C_RESET}")
+
+        # Per-day breakdown
+        if slots_per_day:
+            print(f"\n  {C_BOLD}Slots per Day:{C_RESET}")
+            for day in sorted(
+                (d for d in slots_per_day if d != "Unscheduled"),
+                key=lambda d: d.split(", ")[-1] if ", " in d else d,
+            ):
+                print(f"    {C_GREEN}{day:<30}{C_RESET}  {slots_per_day[day]} slot(s)")
+            if "Unscheduled" in slots_per_day:
+                print(f"    {C_RED}{'Unscheduled':<30}{C_RESET}  {slots_per_day['Unscheduled']} slot(s)")
         print()
 
     # --- Flow 1: List Schedules (default) ---

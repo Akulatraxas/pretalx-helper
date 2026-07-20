@@ -26,6 +26,8 @@ PRETALX_APIKEY = os.environ.get("PRETALX_APIKEY", "")
 PRETALX_EVENT = os.environ.get("PRETALX_EVENT_SLUG", "")  # Required
 SCHEDULE_VERSION = os.environ.get("SCHEDULE_VERSION", "wip")
 BASE_PATH = os.environ.get("BASE_PATH", "/ef-schedule-preview")
+EF_SCHEDULE_IMPRINT = os.environ.get("EF_SCHEDULE_IMPRINT", "https://help.eurofurence.org/legal/imprint")
+EF_SCHEDULE_PRIVACY = os.environ.get("EF_SCHEDULE_PRIVACY", "https://help.eurofurence.org/legal/privacy")
 
 if not PRETALX_URL or not PRETALX_APIKEY:
     sys.stderr.write("Error: PRETALX_URL and PRETALX_APIKEY environment variables are required.\n")
@@ -351,6 +353,8 @@ def build_schedule_data(client, event_slug, schedule_version):
         "tracks": tracks,
         "tags": tags,
         "speakers": speakers,
+        "imprint_url": EF_SCHEDULE_IMPRINT,
+        "privacy_url": EF_SCHEDULE_PRIVACY,
     }
 
 

@@ -91,7 +91,7 @@
             scheduleData = await fetchScheduleData();
             eventTitle.textContent =
                 (scheduleData.event ? scheduleData.event.name : "Schedule") +
-                " — Schedule Preview";
+                " — Schedule";
             document.title = eventTitle.textContent;
             // Show refresh button only in wip mode
             if (scheduleData.schedule_version === "wip") {
@@ -101,10 +101,24 @@
             }
             buildDayTabs();
             buildFilterDropdowns();
+            setupFooter();
             render();
             showMain();
         } catch (e) {
             showError(e.message || "Failed to load schedule data.");
+        }
+    }
+
+    function setupFooter() {
+        if (!scheduleData) return;
+        const footer = $("app-footer");
+        const imprint = $("footer-imprint");
+        const privacy = $("footer-privacy");
+        
+        if (footer && imprint && privacy) {
+            imprint.href = scheduleData.imprint_url || "https://help.eurofurence.org/legal/imprint";
+            privacy.href = scheduleData.privacy_url || "https://help.eurofurence.org/legal/privacy";
+            footer.classList.remove("hidden");
         }
     }
 

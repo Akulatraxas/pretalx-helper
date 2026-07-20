@@ -37,6 +37,8 @@ podman run --rm -d \
     -e PRETALX_EVENT_SLUG="${PRETALX_EVENT_SLUG:-eurofurence-30-2026}" \
     -e SCHEDULE_VERSION="${SCHEDULE_VERSION:-wip}" \
     -e BASE_PATH="${BASE_PATH:-/ef-schedule-preview}" \
+    -e EF_SCHEDULE_IMPRINT="${EF_SCHEDULE_IMPRINT}" \
+    -e EF_SCHEDULE_PRIVACY="${EF_SCHEDULE_PRIVACY}" \
     "$IMAGE_NAME"
 
 echo ""

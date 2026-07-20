@@ -1286,6 +1286,37 @@ input {
 .markdown-content tr:last-child td { border-bottom: none; }
 
 /* ============================================
+   FOOTER
+   ============================================ */
+.app-footer {
+    text-align: center;
+    padding: 24px;
+    margin-top: 32px;
+    border-top: 1px solid var(--border-medium);
+}
+.app-footer.hidden {
+    display: none !important;
+}
+.footer-links {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+.footer-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color var(--transition-fast);
+}
+.footer-links a:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+}
+.footer-separator {
+    color: var(--text-muted);
+}
+
+/* ============================================
    UTILITY CLASSES
    ============================================ */
 .hidden {

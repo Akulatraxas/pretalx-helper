@@ -1,21 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schedule Preview</title>
+    <title>Schedule</title>
     <meta name="description" content="Convention schedule preview — browse events by time or room">
 
     <link rel="stylesheet" href="static/style.css">
 </head>
+
 <body>
     <!-- Header -->
     <header id="app-header" class="app-header">
         <div class="header-top">
             <h1 id="event-title" class="event-title">Schedule Preview</h1>
             <div class="header-actions">
-                <button id="btn-refresh" class="btn-icon hidden" title="Refresh data" aria-label="Refresh schedule data">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                <button id="btn-refresh" class="btn-icon hidden" title="Refresh data"
+                    aria-label="Refresh schedule data">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
                 </button>
             </div>
         </div>
@@ -25,11 +33,23 @@
             <!-- View toggle -->
             <div class="view-toggle">
                 <button id="btn-calendar" class="view-btn active" data-view="calendar" aria-label="Calendar view">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
                     <span>Calendar</span>
                 </button>
                 <button id="btn-rooms" class="view-btn" data-view="rooms" aria-label="Room view">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
                     <span>Rooms</span>
                 </button>
             </div>
@@ -37,35 +57,52 @@
         <!-- Filters bar -->
         <div class="filters-bar">
             <div class="search-box">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input id="filter-search" type="text" placeholder="Search talks, speakers..." aria-label="Search schedule">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input id="filter-search" type="text" placeholder="Search talks, speakers..."
+                    aria-label="Search schedule">
             </div>
             <div class="filter-dropdowns">
                 <div class="filter-dropdown" id="filter-tracks-wrapper">
                     <button id="btn-filter-tracks" class="filter-btn" aria-haspopup="true" aria-expanded="false">
                         <span>Tracks</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
                     </button>
                     <div id="dropdown-tracks" class="dropdown-panel" role="menu"></div>
                 </div>
                 <div class="filter-dropdown" id="filter-tags-wrapper">
                     <button id="btn-filter-tags" class="filter-btn" aria-haspopup="true" aria-expanded="false">
                         <span>Tags</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
                     </button>
                     <div id="dropdown-tags" class="dropdown-panel" role="menu"></div>
                 </div>
                 <div class="filter-dropdown" id="filter-speakers-wrapper">
                     <button id="btn-filter-speakers" class="filter-btn" aria-haspopup="true" aria-expanded="false">
                         <span>Speakers</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
                     </button>
                     <div id="dropdown-speakers" class="dropdown-panel" role="menu"></div>
                 </div>
                 <div class="filter-dropdown" id="filter-rooms-wrapper">
                     <button id="btn-filter-rooms" class="filter-btn" aria-haspopup="true" aria-expanded="false">
                         <span>Rooms</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
                     </button>
                     <div id="dropdown-rooms" class="dropdown-panel" role="menu"></div>
                 </div>
@@ -83,7 +120,11 @@
     <!-- Error state -->
     <div id="error-overlay" class="error-overlay hidden">
         <div class="error-content">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
             <p id="error-message" class="error-text">Failed to load schedule data.</p>
             <button id="btn-retry" class="btn-primary">Retry</button>
         </div>
@@ -97,18 +138,36 @@
         <div id="view-rooms" class="view-container hidden"></div>
         <!-- No results -->
         <div id="no-results" class="no-results hidden">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
             <p>No events match your filters.</p>
         </div>
     </main>
+
+    <!-- Footer -->
+    <footer id="app-footer" class="app-footer hidden">
+        <div class="footer-links" id="footer-links">
+            <a id="footer-imprint" href="#" target="_blank" rel="noopener noreferrer">Imprint</a>
+            <span class="footer-separator">•</span>
+            <a id="footer-privacy" href="#" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+        </div>
+    </footer>
 
     <!-- Detail modal -->
     <div id="detail-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-content">
             <div class="modal-actions">
-                <button id="modal-copy-link" class="modal-copy-link" aria-label="Copy link to this event">Copy link</button>
+                <button id="modal-copy-link" class="modal-copy-link" aria-label="Copy link to this event">Copy
+                    link</button>
                 <button id="modal-close" class="modal-close" aria-label="Close detail view">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                 </button>
             </div>
             <div class="modal-header">
@@ -134,4 +193,5 @@
 
     <script src="static/app.js"></script>
 </body>
+
 </html>

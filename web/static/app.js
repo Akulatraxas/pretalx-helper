@@ -3,9 +3,8 @@
  *
  * Fetches schedule data from the backend API and renders it in two view modes:
  * - Calendar: grouped by day and start time, masonry card grid
- * - Rooms: one column per room, sorted by time
+ * - Rooms: one column per room, sorted by time; this needs work as its a bit useless 
  *
- * All DOM manipulation uses safe methods (createElement, textContent) — no innerHTML.
  */
 
 (function () {
@@ -412,7 +411,7 @@
         });
     }
 
-    // Close dropdowns when clicking outside — but NOT when clicking inside a panel
+    // Close dropdowns when clicking outside. NOT when clicking inside a panel, thx!
     document.addEventListener("click", function (e) {
         if (!e.target.closest(".filter-dropdown")) {
             closeAllDropdowns();
@@ -441,7 +440,7 @@
             if (!filters.tracks.has(trackId)) return false;
         }
 
-        // Tag filter (AND — slot must have ALL selected tags)
+        // Tag filter (AND - slot must have ALL selected tags)
         if (filters.tags.size > 0) {
             var slotTagIds = (slot.tags || []).map(function (t) {
                 return String(t.id);
@@ -479,7 +478,7 @@
 
     /**
      * Check if any text-based search filter is active (search, tracks, tags, speakers).
-     * When search text is active, we search across ALL days.
+     * When search text is active, we search across all days.
      */
     function isSearchActive() {
         return filters.search.length > 0;
@@ -1111,7 +1110,8 @@
         // Description
         var descSection = $("modal-description-section");
         var descEl = $("modal-description");
-        if (slot.description && slot.description.trim()) {
+        // Remove description if it's the same as the abstract, trim whitespace
+        if (slot.description && slot.description.trim() && slot.description.trim() != slot.abstract.trim()) {
             descSection.classList.remove("hidden");
             descEl.classList.add("markdown-content");
             // description is pre-rendered HTML from the backend markdown converter
@@ -1200,7 +1200,7 @@
     /**
      * Push the current view + day + filter state into the URL as query params.
      * Optionally include an open event ID (for deep-linking to a modal).
-     * Uses history.replaceState so navigation still works cleanly.
+     * Uses history.replaceState so we dont fuck up back button navigation.
      */
     function pushURLState(openEventId) {
         var params = new URLSearchParams();

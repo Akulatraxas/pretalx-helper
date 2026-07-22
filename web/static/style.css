@@ -51,27 +51,36 @@
 
 /* ============================================
    Pretalx Schedule Preview — Design System
-   Dark theme inspired by convention schedule UIs
+   Dark theme inspired by convention schedule UIs, especially
+   https://capitoledulibre.org/programme/
+   CI colour Palette (Credit: Eurofurence e.V. & Pretalx)
    ============================================ */
 
-/* --- CSS Custom Properties (Design Tokens) --- */
-/* EF CI Palette reference:
+/* --- CSS Custom Properties  --- */
+/* EF CI Palette:
    EF-Green 100% #005953 | 45% #69a3a2 | 26% #a2c5c4 | 13% #cbdedd | 5% #e6efee
    EF-Grey  100% #808080 | 45% #c6c6c6 | 26% #dedede | 13% #eeeeee | 5% #f9f9f9
 */
 :root {
-    /* Background layers */
-    --bg-base: #0b1220;
-    --bg-surface: #111b2b;
-    --bg-card: #172236;
-    --bg-card-hover: #1d2b42;
-    --bg-elevated: #1e2d44;
+    /* Background layers — EF CI Green + Grey */
+    --bg-base: #080f0e;
+    /* near-black with teal undertone */
+    --bg-surface: #0d1a18;
+    /* deepest surface (header bg, modal bg) */
+    --bg-card: #112220;
+    /* card background — teal-dark */
+    --bg-card-hover: #163029;
+    /* card hover */
+    --bg-elevated: #1a3330;
+    /* dropdowns, elevated panels */
 
     /* Text */
-    --text-primary: #e8edf4;
-    --text-secondary: #8c9eac;
-    /* nudged toward EF-Grey */
-    --text-muted: #5a6b7a;
+    --text-primary: #e6efee;
+    /* EF-Green 5% — warm-tinted white */
+    --text-secondary: #a2c5c4;
+    /* EF-Green 26% — readable secondary */
+    --text-muted: #69a3a2;
+    /* EF-Green 45% — muted labels */
 
     /* Accent — EF CI colours */
     --accent-primary: #005953;
@@ -84,21 +93,21 @@
     /* EF-Green 13%  */
     --accent-warm: #f97316;
     --accent-ef: #005953;
-    --accent-badge-bg: rgba(0, 89, 83, 0.18);
+    --accent-badge-bg: rgba(0, 89, 83, 0.25);
 
-    /* Borders */
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    --border-medium: rgba(255, 255, 255, 0.1);
+    /* Borders — subtle teal-tinted */
+    --border-subtle: rgba(105, 163, 162, 0.12);
+    --border-medium: rgba(105, 163, 162, 0.22);
 
     /* Blocker */
     --blocker-color: #ef4444;
     --blocker-bg: rgba(239, 68, 68, 0.08);
 
     /* Shadows */
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-    --shadow-glow: 0 0 20px rgba(0, 89, 83, 0.25);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+    --shadow-glow: 0 0 24px rgba(0, 89, 83, 0.35);
     /* EF-Green glow */
 
     /* Radii */
@@ -133,7 +142,11 @@ html {
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg-base);
+    background:
+        radial-gradient(ellipse 80% 40% at 20% -5%, rgba(0, 89, 83, 0.28) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 30% at 80% 100%, rgba(0, 89, 83, 0.1) 0%, transparent 70%),
+        var(--bg-base);
+    background-attachment: fixed;
     color: var(--text-primary);
     min-height: 100vh;
     line-height: 1.6;
@@ -187,14 +200,17 @@ input {
     position: sticky;
     top: 0;
     z-index: 100;
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border-subtle);
     padding: 0 24px;
-    backdrop-filter: blur(12px);
-    background: rgba(17, 27, 43, 0.92);
-    background-image: url('https://cfp.eurofurence.org/media/eurofurence-30-2026/img/header_GCYvHYB.webp');
+    /* Solid EF-Green base,
+       then overlaid with the convention artwork for furry uwu */
+    background-color: #005953;
+    background-image:
+        linear-gradient(to bottom, rgba(0, 89, 83, 0.82) 0%, rgba(0, 30, 28, 0.92) 100%),
+        url('https://cfp.eurofurence.org/media/eurofurence-30-2026/img/header_GCYvHYB.webp');
     background-size: cover;
     background-position: center;
+    border-bottom: 1px solid rgba(105, 163, 162, 0.3);
+    backdrop-filter: blur(2px);
 }
 
 .header-top {
@@ -250,8 +266,10 @@ input {
     scrollbar-width: none;
     flex-shrink: 1;
     min-width: 0;
-    background-color: #1e2d44a2;
+    background-color: rgba(0, 40, 37, 0.55);
     backdrop-filter: blur(4px);
+    border-radius: var(--radius-full);
+    padding: 3px;
 }
 
 .day-tabs::-webkit-scrollbar {
@@ -272,20 +290,22 @@ input {
 
 .day-tab:hover {
     color: var(--text-primary);
-    background: var(--bg-elevated);
+    background: rgba(0, 89, 83, 0.4);
 }
 
 .day-tab.active {
-    color: var(--text-primary);
-    background: var(--background-elevated);
-    border-color: var(--accent-ef);
+    color: #fff;
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    box-shadow: 0 2px 8px rgba(0, 89, 83, 0.5);
 }
 
 /* --- View Toggle --- */
 .view-toggle {
     display: flex;
     gap: 4px;
-    background: var(--bg-card);
+    background: rgba(0, 40, 37, 0.55);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     padding: 3px;
     flex-shrink: 0;
@@ -632,6 +652,8 @@ input {
     padding: 24px;
     max-width: 1600px;
     margin: 0 auto;
+    /* thin teal line bridging header→content */
+    border-top: 1px solid rgba(0, 89, 83, 0.35);
 }
 
 /* --- No results --- */
@@ -678,7 +700,7 @@ input {
 .time-group-line {
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, var(--border-medium), transparent);
+    background: linear-gradient(90deg, rgba(105, 163, 162, 0.35), transparent);
 }
 
 .time-group-grid {
@@ -901,7 +923,8 @@ input {
 .event-card {
     position: relative;
     background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
+    border: 1px solid rgba(105, 163, 162, 0.18);
+    /* slightly more visible teal border */
     border-radius: var(--radius-md);
     padding: 14px 16px;
     cursor: pointer;
@@ -915,8 +938,9 @@ input {
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
-    background: var(--card-track-color, var(--text-muted));
+    height: 4px;
+    /* slightly thicker track accent */
+    background: var(--card-track-color, var(--accent-primary-mid));
     border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
@@ -924,7 +948,7 @@ input {
     background: var(--bg-card-hover);
     border-color: var(--border-medium);
     transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-md), 0 0 0 1px rgba(105, 163, 162, 0.2);
 }
 
 .event-card.is-blocker {
@@ -959,13 +983,13 @@ input {
 }
 
 .badge-duration {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(105, 163, 162, 0.1);
     color: var(--text-secondary);
 }
 
 .badge-type {
-    background: rgba(249, 115, 22, 0.12);
-    color: var(--accent-ef);
+    background: rgba(0, 89, 83, 0.2);
+    color: var(--accent-primary-mid);
 }
 
 .badge-track {
@@ -1047,7 +1071,7 @@ input {
     width: 100%;
     max-height: 85vh;
     overflow-y: auto;
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-lg), 0 0 40px rgba(0, 89, 83, 0.2);
     animation: modalSlideIn 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -1354,11 +1378,11 @@ input {
 .markdown-content code {
     font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
     font-size: 0.82em;
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(0, 89, 83, 0.15);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-sm);
     padding: 0.1em 0.4em;
-    color: #a5b4fc;
+    color: var(--accent-primary-light);
 }
 
 .markdown-content pre {

@@ -44,6 +44,26 @@ C_BOLD   = "\033[1m"
 OUTPUT_DIR = "output"
 
 # ---------------------------------------------------------------------------
+# Room group mappings – extend or move to a config file as needed
+# ---------------------------------------------------------------------------
+ROOM_GROUPS = {
+    "panelrooms": [
+        "CCH Hall 4",
+        "CCH X 5-8",
+        "CCH X 9-11",
+        "CCH X 1-2",
+        "CCH X 3-4",
+        "CCH Y 7-8",
+        "CCH Y 9-10",
+    ],
+    "stages": [
+        "Theater Stage – CCH Hall 3",
+        "Arena Stage – CCH Hall H Section 1-2",
+        "Auditorium – CCH Hall Z",
+    ],
+}
+
+# ---------------------------------------------------------------------------
 # Shared helpers (mirroring schedule.py conventions)
 # ---------------------------------------------------------------------------
 
@@ -114,7 +134,7 @@ def extract_slot_row(slot, tag_map):
     """
     Convert a fully-expanded slot dict into a flat row dict for CSV output.
 
-    Returns None for blockers / slots without a start time.
+    Returns None for slots without a start time.
 
     tag_map: pre-fetched {tag_id: tag_name} dict (workaround for pretalx
              bug that 500s when slots.submission.tags is in the expand list).
@@ -125,22 +145,47 @@ def extract_slot_row(slot, tag_map):
     if not start_str:
         return None  # skip unscheduled slots
 
+    dt_start = parse_slot_datetime(start_str)
+    dt_end   = parse_slot_datetime(end_str)
+
+    day_str = dt_start.strftime("%Y-%m-%d") if dt_start else ""
+    start_time_str = dt_start.strftime("%H:%M") if dt_start else start_str
+    end_time_str = dt_end.strftime("%H:%M") if dt_end else (end_str or "")
+
     sub_data = slot.get("submission")
-    if not isinstance(sub_data, dict):
-        # Blocker slot — skip (no submission title to export meaningfully)
-        return None
+    if isinstance(sub_data, dict):
+        name = sub_data.get("title") or ""
+        code = sub_data.get("code") or ""
 
-    name = sub_data.get("title") or ""
-
-    # Speakers: may be a list of dicts or codes
-    speakers = sub_data.get("speakers", [])
-    speaker_names = []
-    for sp in speakers:
-        if isinstance(sp, dict):
-            speaker_names.append(sp.get("name") or sp.get("code") or "")
+        # Speakers: may be a list of dicts or codes
+        speakers = sub_data.get("speakers", [])
+        speaker_names = []
+        for sp in speakers:
+            if isinstance(sp, dict):
+                speaker_names.append(sp.get("name") or sp.get("code") or "")
+            else:
+                speaker_names.append(str(sp))
+        valid_speaker_names = list(filter(None, speaker_names))
+        if valid_speaker_names:
+            speaker_str = valid_speaker_names[0]
+            if len(valid_speaker_names) > 1:
+                speaker_str += f" (+ {len(valid_speaker_names) - 1})"
         else:
-            speaker_names.append(str(sp))
-    speaker_str = "; ".join(filter(None, speaker_names))
+            speaker_str = ""
+
+        track_name = _get_track_name(sub_data)
+        tag_names = _get_tag_names(sub_data, tag_map)
+    else:
+        # Blocker slot
+        name = format_localized(slot.get("description")) or "Blocker"
+        code = "BLOCKER"
+        speaker_str = ""
+        valid_speaker_names = []
+        track_name = ""
+        tag_names = []
+
+    if len(name) > 30:
+        name = name[:30] + "..."
 
     # Room
     room_data = slot.get("room")
@@ -151,22 +196,22 @@ def extract_slot_row(slot, tag_map):
 
     # Runtime in minutes
     runtime = slot.get("duration")
-    if runtime is None and start_str and end_str:
-        dt_start = parse_slot_datetime(start_str)
-        dt_end   = parse_slot_datetime(end_str)
-        if dt_start and dt_end:
-            runtime = int((dt_end - dt_start).total_seconds() // 60)
+    if runtime is None and dt_start and dt_end:
+        runtime = int((dt_end - dt_start).total_seconds() // 60)
 
     return {
+        "code":       code,
         "name":       name,
-        "time_start": start_str,
-        "time_end":   end_str or "",
+        "day":        day_str,
+        "time_start": start_time_str,
+        "time_end":   end_time_str,
         "runtime":    str(runtime) if runtime is not None else "",
         "speaker":    speaker_str,
         "room":       room_name,
         # Internal helpers for filtering / grouping (not written to CSV)
-        "_track":     _get_track_name(sub_data),
-        "_tags":      _get_tag_names(sub_data, tag_map),
+        "_speakers":  valid_speaker_names,
+        "_track":     track_name,
+        "_tags":      tag_names,
         "_sort_key":  start_str,   # ISO string sorts lexicographically
     }
 
@@ -189,7 +234,7 @@ def row_matches_filters(row, rooms, speakers, tracks, tags):
         if row["room"].strip().lower() not in rooms:
             return False
     if speakers:
-        row_speakers_lower = [s.strip().lower() for s in row["speaker"].split(";")]
+        row_speakers_lower = [s.strip().lower() for s in row.get("_speakers", [])]
         if not any(sp in row_speakers_lower for sp in speakers):
             return False
     if tracks:
@@ -206,7 +251,7 @@ def row_matches_filters(row, rooms, speakers, tracks, tags):
 # CSV writing
 # ---------------------------------------------------------------------------
 
-CSV_FIELDS = ["name", "time_start", "time_end", "runtime", "speaker", "room"]
+CSV_FIELDS = ["code", "name", "day", "time_start", "time_end", "runtime", "speaker", "room"]
 
 
 def write_csv(rows, filepath):
@@ -236,7 +281,7 @@ def group_keys_for_row(row, group_by):
     if group_by == "room":
         return [row["room"] or "No Room"]
     if group_by == "speaker":
-        names = [s.strip() for s in row["speaker"].split(";") if s.strip()]
+        names = [s.strip() for s in row.get("_speakers", []) if s.strip()]
         return names if names else ["No Speaker"]
     if group_by == "track":
         return [row["_track"] or "No Track"]
@@ -268,7 +313,7 @@ def main():
 
     # Filters (each may be repeated for multiple values)
     parser.add_argument("--room",    action="append", metavar="ROOM",
-                        help="Filter by room name (case-insensitive). Repeatable.")
+                        help="Filter by room name (case-insensitive) or room group (e.g., 'panelrooms', 'stages'). Repeatable.")
     parser.add_argument("--speaker", action="append", metavar="SPEAKER",
                         help="Filter by speaker name (case-insensitive). Repeatable.")
     parser.add_argument("--track",   action="append", metavar="TRACK",
@@ -391,7 +436,13 @@ def main():
             rows.append(row)
 
     # --- Apply filters ---
-    f_rooms    = normalize_filter_values(args.room)
+    f_rooms = []
+    for r in (args.room or []):
+        r_lower = r.strip().lower()
+        if r_lower in ROOM_GROUPS:
+            f_rooms.extend([x.strip().lower() for x in ROOM_GROUPS[r_lower]])
+        else:
+            f_rooms.extend([x.strip().lower() for x in r.split(",") if x.strip()])
     f_speakers = normalize_filter_values(args.speaker)
     f_tracks   = normalize_filter_values(args.track)
     f_tags     = normalize_filter_values(args.tag)

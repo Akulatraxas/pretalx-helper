@@ -204,6 +204,8 @@ def build_cache(client, event_slug, schedule_version):
                 "code":            code,
                 "title":           sub_data.get("title", ""),
                 "abstract":        sub_data.get("abstract", ""),
+                "notes":           sub_data.get("notes") or "", # TODO notes can not be fetched via api, replace by custom questions answers
+                "internal_notes":  sub_data.get("internal_notes") or "", # TODO internal_notes can not be fetched via api, replace by custom questions answerss
                 "track":           track_obj,
                 "submission_type": stype,
                 "image":           sub_data.get("image") or None,

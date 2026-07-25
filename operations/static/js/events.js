@@ -25,6 +25,7 @@
     const eventSearch       = document.getElementById('event-search');
     const searchMeta        = document.getElementById('search-meta');
     const filterHasData     = document.getElementById('filter-has-data');
+    const filterNoData      = document.getElementById('filter-no-data');
     const filterHasConflict = document.getElementById('filter-has-conflict');
     const eventsList        = document.getElementById('events-list');
 
@@ -83,9 +84,11 @@
 
     function applyFilters() {
         const onlyData     = filterHasData?.checked;
+        const onlyTodo     = filterNoData?.checked;
         const onlyConflict = filterHasConflict?.checked;
         filteredList = allSubmissions.filter(s => {
-            if (onlyData && !s.has_data) return false;
+            if (onlyData     && !s.has_data)    return false;
+            if (onlyTodo     &&  s.has_data)    return false;
             if (onlyConflict && !s.has_conflict) return false;
             return true;
         });
@@ -223,6 +226,32 @@
             const t = el('span');
             t.textContent = data.submission_type;
             detailMeta.appendChild(t);
+        }
+
+        // Submitter notes and internal notes
+        const notesWrap = el('div', { cls: 'detail-notes' });
+        if (data.notes) {
+            const block = el('div', { cls: 'detail-note-block detail-note-public' });
+            const label = el('span', { cls: 'detail-note-label' });
+            label.textContent = 'Submitter Notes';
+            const text = el('p', { cls: 'detail-note-text' });
+            text.textContent = data.notes;
+            block.appendChild(label);
+            block.appendChild(text);
+            notesWrap.appendChild(block);
+        }
+        if (data.internal_notes) {
+            const block = el('div', { cls: 'detail-note-block detail-note-internal' });
+            const label = el('span', { cls: 'detail-note-label' });
+            label.textContent = 'Internal Notes';
+            const text = el('p', { cls: 'detail-note-text' });
+            text.textContent = data.internal_notes;
+            block.appendChild(label);
+            block.appendChild(text);
+            notesWrap.appendChild(block);
+        }
+        if (notesWrap.children.length) {
+            detailMeta.appendChild(notesWrap);
         }
 
         // Conflict banner
@@ -398,6 +427,11 @@
             const amtSpan = el('span', { cls: 'autocomplete-item-amount' });
             amtSpan.textContent = res.amount === 0 ? '∞' : `×${res.amount}`;
             li.appendChild(nameSpan);
+            if (res.departments?.length) {
+                const deptSpan = el('span', { cls: 'autocomplete-item-dept' });
+                deptSpan.textContent = res.departments.join(', ');
+                li.appendChild(deptSpan);
+            }
             li.appendChild(amtSpan);
             li.addEventListener('mousedown', (ev) => {
                 ev.preventDefault();  // don't blur the input
@@ -569,7 +603,14 @@
         debouncedSearch(eventSearch.value.trim());
     });
 
-    filterHasData?.addEventListener('change', applyFilters);
+    filterHasData?.addEventListener('change', () => {
+        if (filterHasData.checked && filterNoData?.checked) filterNoData.checked = false;
+        applyFilters();
+    });
+    filterNoData?.addEventListener('change', () => {
+        if (filterNoData.checked && filterHasData?.checked) filterHasData.checked = false;
+        applyFilters();
+    });
     filterHasConflict?.addEventListener('change', applyFilters);
 
     // ---------------------------------------------------------------------------

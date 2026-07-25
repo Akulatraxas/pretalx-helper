@@ -356,7 +356,7 @@ def api_output():
     """
     Returns a list of slot rows suitable for the output table.
     Each row = one slot occurrence of a submission that has data for the dept.
-    ?dept=all|Conops|FS-Support|CCH
+    ?dept=all|Conops|FS-Support|CCH|CODA
     """
     dept  = request.args.get("dept") or "all"
     cache = pretalx_cache.get_cache()

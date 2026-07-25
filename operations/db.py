@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = os.environ.get("DB_PATH", "/data/operations.db")
 
-DEPARTMENTS = ["Conops", "FS-Support", "CCH"]
+DEPARTMENTS = ["Conops", "FS-Support", "CCH", "CODA"]
 
 # ---------------------------------------------------------------------------
 # Engine

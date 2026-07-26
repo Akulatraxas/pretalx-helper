@@ -190,6 +190,9 @@
         selectedCode = code;
         sessionStorage.setItem(SESSION_KEY, code);
 
+        // Update URL hash so the selection is shareable / direct-linkable
+        history.replaceState(null, '', '#' + encodeURIComponent(code));
+
         // Show panel
         detailEmpty.classList.add('hidden');
         detailPanel.classList.remove('hidden');
@@ -617,15 +620,33 @@
     // Boot
     // ---------------------------------------------------------------------------
 
+    // Resolve the initial code to select: URL hash takes priority over sessionStorage
+    function getInitialCode() {
+        const hash = location.hash ? decodeURIComponent(location.hash.slice(1)) : null;
+        if (hash && allSubmissions.some(s => s.code === hash)) return hash;
+        const saved = sessionStorage.getItem(SESSION_KEY);
+        if (saved && allSubmissions.some(s => s.code === saved)) return saved;
+        return null;
+    }
+
     (async () => {
         await Promise.all([loadSubmissions(), loadResources()]);
 
-        // Restore last selected submission from session
-        const saved = sessionStorage.getItem(SESSION_KEY);
-        if (saved && allSubmissions.some(s => s.code === saved)) {
-            await selectSubmission(saved);
-            scrollItemIntoView(saved);
+        // Restore selection from URL hash or sessionStorage
+        const initial = getInitialCode();
+        if (initial) {
+            await selectSubmission(initial);
+            scrollItemIntoView(initial);
         }
     })();
+
+    // Handle browser back/forward and externally-set hash changes
+    window.addEventListener('hashchange', async () => {
+        const code = location.hash ? decodeURIComponent(location.hash.slice(1)) : null;
+        if (code && code !== selectedCode && allSubmissions.some(s => s.code === code)) {
+            await selectSubmission(code);
+            scrollItemIntoView(code);
+        }
+    });
 
 })();

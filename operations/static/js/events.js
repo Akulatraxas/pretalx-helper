@@ -12,47 +12,47 @@
     'use strict';
 
     // --- State ---
-    let allSubmissions   = [];   // full list from /api/submissions
-    let filteredList     = [];   // after search/filter
-    let selectedCode     = null; // currently selected submission code
-    let availResources   = [];   // from /api/resources (cached)
+    let allSubmissions = [];   // full list from /api/submissions
+    let filteredList = [];   // after search/filter
+    let selectedCode = null; // currently selected submission code
+    let availResources = [];   // from /api/resources (cached)
     let selectedResource = null; // resource object from autocomplete
 
     // Restore last selected code from sessionStorage for page reload resilience
     const SESSION_KEY = 'ops-selected-code';
 
     // --- List elements ---
-    const eventSearch       = document.getElementById('event-search');
-    const searchMeta        = document.getElementById('search-meta');
-    const filterHasData     = document.getElementById('filter-has-data');
-    const filterNoData      = document.getElementById('filter-no-data');
+    const eventSearch = document.getElementById('event-search');
+    const searchMeta = document.getElementById('search-meta');
+    const filterHasData = document.getElementById('filter-has-data');
+    const filterNoData = document.getElementById('filter-no-data');
     const filterHasConflict = document.getElementById('filter-has-conflict');
-    const eventsList        = document.getElementById('events-list');
+    const eventsList = document.getElementById('events-list');
 
     // --- Detail elements ---
-    const detailEmpty  = document.getElementById('detail-empty');
-    const detailPanel  = document.getElementById('detail-panel');
-    const detailCode   = document.getElementById('detail-code');
-    const detailTitle  = document.getElementById('detail-title');
-    const detailMeta   = document.getElementById('detail-meta');
-    const detailTrack  = document.getElementById('detail-track-bar');
+    const detailEmpty = document.getElementById('detail-empty');
+    const detailPanel = document.getElementById('detail-panel');
+    const detailCode = document.getElementById('detail-code');
+    const detailTitle = document.getElementById('detail-title');
+    const detailMeta = document.getElementById('detail-meta');
+    const detailTrack = document.getElementById('detail-track-bar');
     const conflictBanner = document.getElementById('detail-conflict-banner');
-    const slotsEl      = document.getElementById('detail-slots');
-    const speakersEl   = document.getElementById('detail-speakers');
-    const resListEl    = document.getElementById('resources-assignment-list');
-    const cmtListEl    = document.getElementById('comments-assignment-list');
+    const slotsEl = document.getElementById('detail-slots');
+    const speakersEl = document.getElementById('detail-speakers');
+    const resListEl = document.getElementById('resources-assignment-list');
+    const cmtListEl = document.getElementById('comments-assignment-list');
 
     // Resource add UI
     const resSearchInput = document.getElementById('resource-search-input');
-    const resDropdown    = document.getElementById('resource-dropdown');
-    const resNoteInput   = document.getElementById('resource-note-input');
-    const resDeptSel     = document.getElementById('resource-dept-override');
-    const resAddBtn      = document.getElementById('resource-add-btn');
+    const resDropdown = document.getElementById('resource-dropdown');
+    const resNoteInput = document.getElementById('resource-note-input');
+    const resDeptSel = document.getElementById('resource-dept-override');
+    const resAddBtn = document.getElementById('resource-add-btn');
 
     // Comment add UI
-    const cmtTextInput   = document.getElementById('comment-text-input');
-    const cmtDeptSel     = document.getElementById('comment-dept-select');
-    const cmtAddBtn      = document.getElementById('comment-add-btn');
+    const cmtTextInput = document.getElementById('comment-text-input');
+    const cmtDeptSel = document.getElementById('comment-dept-select');
+    const cmtAddBtn = document.getElementById('comment-add-btn');
 
     // ---------------------------------------------------------------------------
     // Load submissions list
@@ -60,7 +60,7 @@
 
     async function loadSubmissions(query = '') {
         try {
-            const qs  = query ? `?q=${encodeURIComponent(query)}` : '';
+            const qs = query ? `?q=${encodeURIComponent(query)}` : '';
             const data = await apiFetch('/api/submissions' + qs);
             allSubmissions = data.submissions || [];
             applyFilters();
@@ -83,12 +83,12 @@
     // ---------------------------------------------------------------------------
 
     function applyFilters() {
-        const onlyData     = filterHasData?.checked;
-        const onlyTodo     = filterNoData?.checked;
+        const onlyData = filterHasData?.checked;
+        const onlyTodo = filterNoData?.checked;
         const onlyConflict = filterHasConflict?.checked;
         filteredList = allSubmissions.filter(s => {
-            if (onlyData     && !s.has_data)    return false;
-            if (onlyTodo     &&  s.has_data)    return false;
+            if (onlyData && !s.has_data) return false;
+            if (onlyTodo && s.has_data) return false;
             if (onlyConflict && !s.has_conflict) return false;
             return true;
         });
@@ -123,7 +123,7 @@
             header.appendChild(codeEl);
 
             const dots = el('div', { cls: 'event-item-dots' });
-            if (sub.has_data)     dots.appendChild(el('span', { cls: 'event-dot data',     title: 'Has resources/comments' }));
+            if (sub.has_data) dots.appendChild(el('span', { cls: 'event-dot data', title: 'Has resources/comments' }));
             if (sub.has_conflict) dots.appendChild(el('span', { cls: 'event-dot conflict', title: 'Resource conflict' }));
 
             li.appendChild(header);
@@ -189,6 +189,9 @@
 
         selectedCode = code;
         sessionStorage.setItem(SESSION_KEY, code);
+
+        // Update URL hash so the selection is shareable / direct-linkable
+        history.replaceState(null, '', '#' + encodeURIComponent(code));
 
         // Show panel
         detailEmpty.classList.add('hidden');
@@ -295,7 +298,7 @@
             row.appendChild(name);
             if (sp.telegram) {
                 const tg = el('span', { cls: 'speaker-telegram' });
-                tg.textContent = `@${sp.telegram}`;
+                tg.textContent = `${sp.telegram}`;
                 row.appendChild(tg);
             }
             speakersEl.appendChild(row);
@@ -332,7 +335,7 @@
     }
 
     function makeResourceItem(r) {
-        const li  = el('li', { cls: 'assignment-item' });
+        const li = el('li', { cls: 'assignment-item' });
         const nameEl = el('span', { cls: 'assignment-name' });
         nameEl.textContent = r.resource_name;
         li.appendChild(nameEl);
@@ -502,7 +505,7 @@
 
     resAddBtn?.addEventListener('click', async () => {
         if (!selectedCode || !selectedResource) return;
-        const note       = resNoteInput?.value?.trim() || null;
+        const note = resNoteInput?.value?.trim() || null;
         const deptOverride = resDeptSel?.value || null;
 
         resAddBtn.disabled = true;
@@ -510,15 +513,15 @@
             await apiFetch(`/api/submission/${encodeURIComponent(selectedCode)}/resources`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    resource_id:        selectedResource.id,
-                    note:               note,
+                    resource_id: selectedResource.id,
+                    note: note,
                     department_override: deptOverride || null,
                 }),
             });
             // Reset form
             if (resSearchInput) resSearchInput.value = '';
-            if (resNoteInput)   resNoteInput.value   = '';
-            if (resDeptSel)     resDeptSel.value     = '';
+            if (resNoteInput) resNoteInput.value = '';
+            if (resDeptSel) resDeptSel.value = '';
             selectedResource = null;
             resAddBtn.disabled = true;
             showToast(`Added "${selectedResource?.name || 'resource'}"`, 'success');
@@ -617,15 +620,33 @@
     // Boot
     // ---------------------------------------------------------------------------
 
+    // Resolve the initial code to select: URL hash takes priority over sessionStorage
+    function getInitialCode() {
+        const hash = location.hash ? decodeURIComponent(location.hash.slice(1)) : null;
+        if (hash && allSubmissions.some(s => s.code === hash)) return hash;
+        const saved = sessionStorage.getItem(SESSION_KEY);
+        if (saved && allSubmissions.some(s => s.code === saved)) return saved;
+        return null;
+    }
+
     (async () => {
         await Promise.all([loadSubmissions(), loadResources()]);
 
-        // Restore last selected submission from session
-        const saved = sessionStorage.getItem(SESSION_KEY);
-        if (saved && allSubmissions.some(s => s.code === saved)) {
-            await selectSubmission(saved);
-            scrollItemIntoView(saved);
+        // Restore selection from URL hash or sessionStorage
+        const initial = getInitialCode();
+        if (initial) {
+            await selectSubmission(initial);
+            scrollItemIntoView(initial);
         }
     })();
+
+    // Handle browser back/forward and externally-set hash changes
+    window.addEventListener('hashchange', async () => {
+        const code = location.hash ? decodeURIComponent(location.hash.slice(1)) : null;
+        if (code && code !== selectedCode && allSubmissions.some(s => s.code === code)) {
+            await selectSubmission(code);
+            scrollItemIntoView(code);
+        }
+    });
 
 })();

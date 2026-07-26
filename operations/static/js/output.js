@@ -8,11 +8,11 @@
     let currentDept = 'all';
     let currentRows = [];
 
-    const tabs      = document.querySelectorAll('.dept-tab');
-    const tbody     = document.getElementById('output-tbody');
-    const tableEl   = document.getElementById('output-table');
-    const emptyEl   = document.getElementById('output-empty');
-    const footerEl  = document.getElementById('output-footer');
+    const tabs = document.querySelectorAll('.dept-tab');
+    const tbody = document.getElementById('output-tbody');
+    const tableEl = document.getElementById('output-table');
+    const emptyEl = document.getElementById('output-empty');
+    const footerEl = document.getElementById('output-footer');
     const exportBtn = document.getElementById('btn-export-csv');
 
     // ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@
             if (row.day_label !== lastDay) {
                 lastDay = row.day_label;
                 const sep = el('tr', { cls: 'day-separator-row' });
-                const td  = el('td', { colspan: '8' });
+                const td = el('td', { colspan: '8' });
                 td.textContent = row.day_label;
                 Object.assign(td.style, {
                     fontFamily: "'Outfit', sans-serif",
@@ -132,7 +132,7 @@
                 tdSpeakers.appendChild(nameEl);
                 if (sp.telegram) {
                     const tgEl = el('div', { cls: 'speaker-telegram-small' });
-                    tgEl.textContent = `@${sp.telegram}`;
+                    tgEl.textContent = `${sp.telegram}`;
                     tdSpeakers.appendChild(tgEl);
                 }
             }

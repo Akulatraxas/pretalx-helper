@@ -68,7 +68,10 @@ def _find_telegram(answers):
             q_text = str(q)
         if "telegram" in q_text.lower():
             val = answer.get("answer") or answer.get("answer_file") or ""
-            return str(val).strip()
+            val = str(val).strip()
+            if val and not val.startswith("@"):
+                val = f"@{val}"
+            return val
     return ""
 
 

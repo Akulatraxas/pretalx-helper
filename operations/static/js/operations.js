@@ -122,7 +122,7 @@
         if (slot.speakers?.length) {
             const spEl = el('div', { cls: 'kanban-speakers' });
             spEl.textContent = slot.speakers.map(s =>
-                s.telegram ? `${s.name} (@${s.telegram})` : s.name
+                s.telegram ? `${s.name} (${s.telegram})` : s.name
             ).join(', ');
             body.appendChild(spEl);
         }

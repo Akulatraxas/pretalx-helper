@@ -33,6 +33,7 @@
     const detailEmpty = document.getElementById('detail-empty');
     const detailPanel = document.getElementById('detail-panel');
     const detailCode = document.getElementById('detail-code');
+    const PRETALX_ORGA_BASE = detailPanel?.dataset?.pretalxOrgaBase || '';
     const detailTitle = document.getElementById('detail-title');
     const detailMeta = document.getElementById('detail-meta');
     const detailTrack = document.getElementById('detail-track-bar');
@@ -215,8 +216,21 @@
         const color = data.track?.color || '#3b82f6';
         detailTrack.style.background = color;
 
-        // Code / title / meta
-        detailCode.textContent = data.code;
+        // Code: render as a link to the pretalx orga area
+        detailCode.textContent = '';
+        if (PRETALX_ORGA_BASE) {
+            const codeLink = el('a', {
+                cls: 'detail-code-link',
+                href: `${PRETALX_ORGA_BASE}/submissions/${encodeURIComponent(data.code)}/`,
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                title: 'Open in pretalx organiser area',
+            });
+            codeLink.textContent = data.code;
+            detailCode.appendChild(codeLink);
+        } else {
+            detailCode.textContent = data.code;
+        }
         detailTitle.textContent = data.title;
 
         detailMeta.innerHTML = '';
@@ -224,6 +238,9 @@
             const t = el('span');
             t.textContent = data.track.name;
             detailMeta.appendChild(t);
+            const sep = el('span');
+            sep.textContent = " | "
+            detailMeta.appendChild(sep);
         }
         if (data.submission_type) {
             const t = el('span');

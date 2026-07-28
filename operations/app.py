@@ -55,13 +55,14 @@ app = Flask(
 )
 app.config["BASE_PATH"] = BASE_PATH
 
-# Make BASE_PATH and DEPARTMENTS available in all templates
+# Make BASE_PATH, DEPARTMENTS, and pretalx orga link base available in all templates
 @app.context_processor
 def inject_globals():
     return {
-        "base_path":   BASE_PATH,
-        "departments": DEPARTMENTS,
-        "user":        getattr(g, "user", None),
+        "base_path":          BASE_PATH,
+        "departments":        DEPARTMENTS,
+        "user":               getattr(g, "user", None),
+        "pretalx_orga_base":  f"{PRETALX_URL}/orga/event/submission/{PRETALX_EVENT}",
     }
 
 # ---------------------------------------------------------------------------

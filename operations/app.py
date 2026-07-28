@@ -62,7 +62,7 @@ def inject_globals():
         "base_path":          BASE_PATH,
         "departments":        DEPARTMENTS,
         "user":               getattr(g, "user", None),
-        "pretalx_orga_base":  f"{PRETALX_URL}/orga/event/submission/{PRETALX_EVENT}",
+        "pretalx_orga_base":  f"{PRETALX_URL}/orga/event/{PRETALX_EVENT}",
     }
 
 # ---------------------------------------------------------------------------

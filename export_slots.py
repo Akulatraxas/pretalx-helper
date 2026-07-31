@@ -18,6 +18,9 @@ Usage examples:
 
   # Export slots filtered by track, grouped into one file per room
   python export_slots.py --schedule wip --track "Art" --group-by room
+
+  # Export a room-usage overview (earliest start / latest end per room per day)
+  python export_slots.py --schedule wip --room-usage
 """
 
 import sys
@@ -55,6 +58,8 @@ ROOM_GROUPS = {
         "CCH X 3-4",
         "CCH Y 7-8",
         "CCH Y 9-10",
+        "CCH X 12",
+        "CCH Y 4"
     ],
     "stages": [
         "Theater Stage – CCH Hall 3",
@@ -190,9 +195,11 @@ def extract_slot_row(slot, tag_map):
     # Room
     room_data = slot.get("room")
     if isinstance(room_data, dict):
-        room_name = format_localized(room_data.get("name")) or str(room_data.get("id", ""))
+        room_name     = format_localized(room_data.get("name")) or str(room_data.get("id", ""))
+        room_capacity = room_data.get("capacity")  # may be int or None
     else:
-        room_name = str(room_data) if room_data else ""
+        room_name     = str(room_data) if room_data else ""
+        room_capacity = None
 
     # Runtime in minutes
     runtime = slot.get("duration")
@@ -209,10 +216,12 @@ def extract_slot_row(slot, tag_map):
         "speaker":    speaker_str,
         "room":       room_name,
         # Internal helpers for filtering / grouping (not written to CSV)
-        "_speakers":  valid_speaker_names,
-        "_track":     track_name,
-        "_tags":      tag_names,
-        "_sort_key":  start_str,   # ISO string sorts lexicographically
+        "_speakers":       valid_speaker_names,
+        "_track":          track_name,
+        "_tags":           tag_names,
+        "_sort_key":       start_str,   # ISO string sorts lexicographically
+        "_end_key":        end_str,     # ISO end string for accurate end-time comparisons
+        "_room_capacity":  room_capacity,
     }
 
 
@@ -253,6 +262,8 @@ def row_matches_filters(row, rooms, speakers, tracks, tags):
 
 CSV_FIELDS = ["code", "name", "day", "time_start", "time_end", "runtime", "speaker", "room"]
 
+ROOM_USAGE_FIELDS_BASE = ["Day", "Room Group", "Room", "Earliest Slot Start", "Latest Slot End"]
+
 
 def write_csv(rows, filepath):
     """Write a list of row dicts to a CSV file."""
@@ -262,6 +273,94 @@ def write_csv(rows, filepath):
         writer.writeheader()
         writer.writerows(rows)
     return len(rows)
+
+
+def write_room_usage_csv(usage_rows, filepath, fieldnames):
+    """Write room-usage summary rows to a CSV file."""
+    os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
+    with open(filepath, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(usage_rows)
+    return len(usage_rows)
+
+
+def build_room_usage_rows(rows, include_capacity=False):
+    """
+    Build a list of room-usage summary dicts from extracted slot rows.
+
+    For every room defined in ROOM_GROUPS, compute – per calendar day –
+    the earliest slot start time and the latest slot end time.
+    Rooms with no scheduled slots on a given day are omitted.
+
+    include_capacity: if True, a 'Capacity' key is added to each result row.
+
+    Returns a list of dicts sorted by Day then Earliest Slot Start.
+    """
+    # Build an inverse map: room_name_lower -> group_name
+    room_to_group = {}
+    for group_name, room_list in ROOM_GROUPS.items():
+        for room in room_list:
+            room_to_group[room.strip().lower()] = (group_name, room)
+
+    # Accumulate (earliest_start, latest_end, capacity) keyed by (day, group, canonical_room)
+    usage = {}  # key -> {"earliest": datetime, "latest": datetime, "capacity": int|None}
+
+    for row in rows:
+        room_lower = row["room"].strip().lower()
+        if room_lower not in room_to_group:
+            continue  # ignore rooms not in any group
+
+        group_name, canonical_room = room_to_group[room_lower]
+        day = row["day"]
+
+        # Parse start/end directly from the stored ISO strings
+        dt_start = parse_slot_datetime(row.get("_sort_key") or "")
+        dt_end   = parse_slot_datetime(row.get("_end_key") or "")
+
+        if dt_start is None:
+            continue
+
+        capacity = row.get("_room_capacity")  # int or None
+
+        key = (day, group_name, canonical_room)
+        if key not in usage:
+            usage[key] = {"earliest": dt_start, "latest": dt_end, "capacity": capacity}
+        else:
+            if dt_start < usage[key]["earliest"]:
+                usage[key]["earliest"] = dt_start
+            if dt_end is not None and (
+                usage[key]["latest"] is None or dt_end > usage[key]["latest"]
+            ):
+                usage[key]["latest"] = dt_end
+            # Keep whichever capacity value is not None (should be stable per room)
+            if usage[key]["capacity"] is None and capacity is not None:
+                usage[key]["capacity"] = capacity
+
+    # Convert to output rows and sort by day then earliest start
+    result = []
+    for (day, group_name, canonical_room), times in usage.items():
+        earliest = times["earliest"]
+        latest   = times["latest"]
+        row_out = {
+            "Day":                 day,
+            "Room Group":          group_name,
+            "Room":                canonical_room,
+            "Earliest Slot Start": earliest.strftime("%H:%M") if earliest else "",
+            "Latest Slot End":     latest.strftime("%H:%M") if latest else "",
+            # Internal sort key
+            "_sort": (day, earliest or datetime.min),
+        }
+        if include_capacity:
+            cap = times["capacity"]
+            row_out["Capacity"] = str(cap) if cap is not None else ""
+        result.append(row_out)
+
+    result.sort(key=lambda r: r["_sort"])
+    # Remove internal sort key before returning
+    for r in result:
+        del r["_sort"]
+    return result
 
 
 def sort_rows(rows):
@@ -328,6 +427,19 @@ def main():
         metavar="DIMENSION",
         help="Group output into one file per distinct value of DIMENSION "
              "(room | speaker | track | tag)."
+    )
+
+    # Room-usage overview
+    parser.add_argument(
+        "--room-usage",
+        action="store_true",
+        help="Export a room-usage overview: earliest slot start and latest slot end "
+             "per room (from ROOM_GROUPS) per day. Output: output/room_usage.csv"
+    )
+    parser.add_argument(
+        "--room-capacity",
+        action="store_true",
+        help="(Used with --room-usage) Include a Capacity column in the room-usage CSV."
     )
 
     args = parser.parse_args()
@@ -454,6 +566,20 @@ def main():
 
     if not rows:
         print(f"{C_YELLOW}No slots match the given filters. Nothing to export.{C_RESET}")
+        sys.exit(0)
+
+    # --- Room-usage overview (early exit) ---
+    if args.room_usage:
+        include_capacity = args.room_capacity
+        usage_rows = build_room_usage_rows(rows, include_capacity=include_capacity)
+        if not usage_rows:
+            print(f"{C_YELLOW}No slots found in any configured room group. Nothing to export.{C_RESET}")
+            sys.exit(0)
+        fieldnames = ROOM_USAGE_FIELDS_BASE + (["Room-Capacity"] if include_capacity else [])
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        filepath = os.path.join(OUTPUT_DIR, "room_usage.csv")
+        count = write_room_usage_csv(usage_rows, filepath, fieldnames)
+        print(f"\n{C_GREEN}{C_BOLD}Done.{C_RESET} {count} rows written to {C_CYAN}{filepath}{C_RESET}.")
         sys.exit(0)
 
     # --- Ensure output directory ---

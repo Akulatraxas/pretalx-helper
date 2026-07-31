@@ -575,7 +575,7 @@ def main():
         if not usage_rows:
             print(f"{C_YELLOW}No slots found in any configured room group. Nothing to export.{C_RESET}")
             sys.exit(0)
-        fieldnames = ROOM_USAGE_FIELDS_BASE + (["Capacity"] if include_capacity else [])
+        fieldnames = ROOM_USAGE_FIELDS_BASE + (["Room-Capacity"] if include_capacity else [])
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         filepath = os.path.join(OUTPUT_DIR, "room_usage.csv")
         count = write_room_usage_csv(usage_rows, filepath, fieldnames)

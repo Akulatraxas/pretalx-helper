@@ -207,6 +207,16 @@ def generate_pretalx_xml(data, pretalx_url="https://cfp.eurofurence.org"):
                 if t_obj and isinstance(t_obj, dict):
                     ET.SubElement(event_elem, "track").text = t_obj.get("name", "")
 
+                # Tags
+                tags_elem = ET.SubElement(event_elem, "tags")
+                for tag_obj in slot.get("tags", []):
+                    if isinstance(tag_obj, dict):
+                        t_str = tag_obj.get("tag") or tag_obj.get("name") or ""
+                    else:
+                        t_str = str(tag_obj or "")
+                    if t_str:
+                        ET.SubElement(tags_elem, "tag").text = t_str
+
                 # Logo image
                 img = slot.get("image")
                 if img:

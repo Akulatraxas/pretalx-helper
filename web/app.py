@@ -20,7 +20,7 @@ import markdown as _markdown
 
 from flask import Flask, jsonify, send_from_directory, Response, request
 from pretalx_client import PretalxClient, PretalxAPIError
-from xml_exporter import generate_pretalx_xml
+from pretalx_xml_exporter import generate_pretalx_xml
 
 # --- Configuration (all via environment variables) ---
 PRETALX_URL = os.environ.get("PRETALX_URL", "")

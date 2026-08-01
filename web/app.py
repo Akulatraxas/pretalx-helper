@@ -15,10 +15,12 @@ import urllib.request
 import urllib.error
 import urllib.parse
 
+import uuid
 import markdown as _markdown
 
 from flask import Flask, jsonify, send_from_directory, Response, request
 from pretalx_client import PretalxClient, PretalxAPIError
+from xml_exporter import generate_pretalx_xml
 
 # --- Configuration (all via environment variables) ---
 PRETALX_URL = os.environ.get("PRETALX_URL", "")
@@ -155,6 +157,7 @@ def build_schedule_data(client, event_slug, schedule_version):
     rooms_map = {}
     speakers_map = {}
     days_map = {}
+    slot_index_counter = {}
 
     for slot in slots_raw:
         start = slot.get("start")
@@ -290,9 +293,20 @@ def build_schedule_data(client, event_slug, schedule_version):
                 logger.debug("Skipping internal-tagged slot: %s", title)
                 continue
 
+        # Slot index per submission code & GUID generation
+        if not is_blocker:
+            slot_idx = slot_index_counter.get(code, 0)
+            slot_index_counter[code] = slot_idx + 1
+            slot_guid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"event:{code}-{slot_idx}"))
+        else:
+            slot_idx = 0
+            slot_guid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"blocker:{stable_id}"))
+
         slot_obj = {
             "id": slot.get("id"),
             "stable_id": stable_id,
+            "slot_index": slot_idx,
+            "guid": slot_guid,
             "start": start,
             "end": end,
             "duration": duration,
@@ -303,6 +317,8 @@ def build_schedule_data(client, event_slug, schedule_version):
             "track": track_obj,
             "tags": slot_tags,
             "speakers": slot_speakers,
+            "raw_abstract": abstract,
+            "raw_description": description,
             "abstract": md_to_html(abstract),
             "description": md_to_html(description),
             "submission_type": submission_type,
@@ -416,12 +432,26 @@ def api_schedule():
         return jsonify(_cache["data"])
 
 
+@app.route(f"{BASE_PATH}/api/schedule/pretalx.xml")
+def api_schedule_pretalx_xml():
+    """Return cached schedule data formatted as (hopyfully, mostly) frab-like Pretalx XML."""
+    with _cache["lock"]:
+        if _cache["data"] is None:
+            if _cache["error"]:
+                return Response(f"<?xml version='1.0'?><error>{_cache['error']}</error>", status=503, mimetype="application/xml")
+            return Response("<?xml version='1.0'?><error>Data not yet loaded. Try again shortly.</error>", status=503, mimetype="application/xml")
+        data = _cache["data"]
+
+    xml_str = generate_pretalx_xml(data, PRETALX_URL)
+    return Response(xml_str, status=200, mimetype="application/xml; charset=utf-8")
+
+
 @app.route(f"{BASE_PATH}/api/refresh", methods=["POST"])
 def api_refresh():
     """Trigger a re-fetch of the schedule data.
 
     Only available when SCHEDULE_VERSION is 'wip'. Returns 403 otherwise
-    to prevent unintended API hammering in production deployments.
+    to prevent (un)intended API hammering in production deployments.
     """
     if SCHEDULE_VERSION != "wip":
         return jsonify({"error": "Refresh not available in this mode."}), 403

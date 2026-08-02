@@ -14,7 +14,62 @@
     <!-- Header -->
     <header id="app-header" class="app-header">
         <div class="header-top">
-            <h1 id="event-title" class="event-title">Schedule Preview</h1>
+            <div class="title-menu-group">
+                <h1 id="event-title" class="event-title">Schedule Preview</h1>
+                <!-- Menu button + dropdown -->
+                <div class="menu-dropdown-wrapper" id="menu-dropdown-wrapper">
+                    <button id="btn-menu" class="btn-icon" title="Menu" aria-label="Open menu" aria-haspopup="true"
+                        aria-expanded="false">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="5" r="1" fill="currentColor" />
+                            <circle cx="12" cy="12" r="1" fill="currentColor" />
+                            <circle cx="12" cy="19" r="1" fill="currentColor" />
+                        </svg>
+                    </button>
+                    <div id="menu-dropdown" class="menu-dropdown-panel" role="menu">
+                        <button id="menu-attributions" class="menu-dropdown-item" role="menuitem">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            Attributions
+                        </button>
+                        <div class="menu-dropdown-separator"></div>
+                        <a href="./api/schedule/pretalx.xml" class="menu-dropdown-item" role="menuitem" target="_blank"
+                            rel="noopener noreferrer">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="16 18 22 12 16 6" />
+                                <polyline points="8 6 2 12 8 18" />
+                            </svg>
+                            XML – frab compatible
+                        </a>
+                        <a href="https://eurofurence.org" class="menu-dropdown-item" role="menuitem" target="_blank"
+                            rel="noopener noreferrer">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="2" y1="12" x2="22" y2="12" />
+                                <path
+                                    d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                            </svg>
+                            Eurofurence
+                        </a>
+                        <a href="https://app.eurofurence.org/" class="menu-dropdown-item" role="menuitem"
+                            target="_blank" rel="noopener noreferrer">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                                <line x1="12" y1="18" x2="12.01" y2="18" />
+                            </svg>
+                            Eurofurence – App
+                        </a>
+                    </div>
+                </div>
+            </div>
             <div class="header-actions">
                 <button id="btn-refresh" class="btn-icon hidden" title="Refresh data"
                     aria-label="Refresh schedule data">
@@ -186,6 +241,63 @@
                 <div id="modal-description-section" class="modal-section">
                     <h3 class="modal-section-title">Description</h3>
                     <div id="modal-description" class="modal-text"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attributions modal -->
+    <div id="attributions-modal" class="modal-overlay hidden" role="dialog" aria-modal="true"
+        aria-labelledby="attributions-modal-title">
+        <div class="modal-content">
+            <div class="modal-actions">
+                <button id="attributions-modal-close" class="modal-close" aria-label="Close attributions">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-header">
+                <div class="modal-track-bar" style="background: linear-gradient(90deg, #005953, #69a3a2);"></div>
+                <div class="modal-badges"></div>
+                <h2 id="attributions-modal-title" class="modal-title">Attributions</h2>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <p class="modal-text">This schedule viewer was built using the following resources:</p>
+                    <ul class="attributions-list">
+                        <li>
+                            <strong>Pretalx</strong> - Open-source conference scheduling software.<br>
+                            <a href="https://pretalx.com" target="_blank" rel="noopener noreferrer">pretalx.com</a>
+                        </li>
+                        <li>
+                            <strong>Inter &amp; Outfit</strong> - Typography by the Google Fonts team.<br>
+                            <a href="https://fonts.google.com" target="_blank"
+                                rel="noopener noreferrer">fonts.google.com</a>
+                        </li>
+                        <li>
+                            <strong>Lucide Icons</strong> - Icon set used throughout the UI.<br>
+                            <a href="https://lucide.dev" target="_blank" rel="noopener noreferrer">lucide.dev</a> ISC
+                            License
+                        </li>
+                        <li>
+                            <strong>Eurofurence Background Image</strong> - Made by <a
+                                href="https://www.instagram.com/jukajokunst/" target="_blank"
+                                rel="noopener noreferrer">Jukajo</a><br>
+                        </li>
+                        <li>
+                            <strong>Original Design</strong> - Inspired by <a
+                                href="https://capitoledulibre.org/programme/" target="_blank"
+                                rel="noopener noreferrer">Capitole du Libre</a><br>
+                        </li>
+                        <li>
+                            <strong>Frab compatible xml export</strong> - Original Idea by <a
+                                href="https://github.com/jendrikw" target="_blank"
+                                rel="noopener noreferrer">Jendrik</a><br>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>

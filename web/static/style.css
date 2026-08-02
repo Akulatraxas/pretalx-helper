@@ -220,6 +220,14 @@ input {
     padding: 14px 0 8px;
 }
 
+/* Title + menu button grouped together on the left */
+.title-menu-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
 .event-title {
     font-size: 1.35rem;
     font-weight: 700;
@@ -227,6 +235,93 @@ input {
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---- Menu dropdown (next to title) ---- */
+.menu-dropdown-wrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.menu-dropdown-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 210px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    display: none;
+    z-index: 300;
+}
+
+.menu-dropdown-panel.open {
+    display: block;
+    animation: dropdownIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.menu-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background var(--transition-fast), color var(--transition-fast);
+    text-align: left;
+    box-sizing: border-box;
+}
+
+.menu-dropdown-item:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.menu-dropdown-separator {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 4px 6px;
+}
+
+/* ---- Attributions list inside modal ---- */
+.attributions-list {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.attributions-list li {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.attributions-list li strong {
+    color: var(--text-primary);
+}
+
+.attributions-list li a {
+    color: var(--accent-primary-mid);
+    text-decoration: none;
+}
+
+.attributions-list li a:hover {
+    text-decoration: underline;
 }
 
 .header-actions {

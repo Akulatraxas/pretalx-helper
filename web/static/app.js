@@ -46,6 +46,11 @@
     const detailModal = $("detail-modal");
     const modalClose = $("modal-close");
     const modalCopyLink = $("modal-copy-link");
+    const btnMenu = $("btn-menu");
+    const menuDropdown = $("menu-dropdown");
+    const menuAttributions = $("menu-attributions");
+    const attributionsModal = $("attributions-modal");
+    const attributionsModalClose = $("attributions-modal-close");
 
     // --- Utility: generate a consistent color from a string ---
     function stringToHSL(str) {
@@ -1397,7 +1402,71 @@
         if (e.key === "Escape" && !detailModal.classList.contains("hidden")) {
             closeDetailModal();
         }
+        if (e.key === "Escape" && attributionsModal && !attributionsModal.classList.contains("hidden")) {
+            closeAttributionsModal();
+        }
+        if (e.key === "Escape" && menuDropdown && menuDropdown.classList.contains("open")) {
+            closeMenuDropdown();
+        }
     });
+
+    // --- Menu dropdown ---
+    function openMenuDropdown() {
+        menuDropdown.classList.add("open");
+        btnMenu.setAttribute("aria-expanded", "true");
+    }
+    function closeMenuDropdown() {
+        menuDropdown.classList.remove("open");
+        btnMenu.setAttribute("aria-expanded", "false");
+    }
+
+    if (btnMenu && menuDropdown) {
+        btnMenu.addEventListener("click", function (e) {
+            e.stopPropagation();
+            if (menuDropdown.classList.contains("open")) {
+                closeMenuDropdown();
+            } else {
+                openMenuDropdown();
+            }
+        });
+        // Close when clicking outside
+        document.addEventListener("click", function (e) {
+            if (menuDropdown.classList.contains("open") &&
+                !menuDropdown.contains(e.target) &&
+                e.target !== btnMenu) {
+                closeMenuDropdown();
+            }
+        });
+    }
+
+    // --- Attributions modal ---
+    function openAttributionsModal() {
+        if (!attributionsModal) return;
+        attributionsModal.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+    }
+    function closeAttributionsModal() {
+        if (!attributionsModal) return;
+        attributionsModal.classList.add("hidden");
+        document.body.style.overflow = "";
+    }
+
+    if (menuAttributions) {
+        menuAttributions.addEventListener("click", function () {
+            closeMenuDropdown();
+            openAttributionsModal();
+        });
+    }
+    if (attributionsModalClose) {
+        attributionsModalClose.addEventListener("click", closeAttributionsModal);
+    }
+    if (attributionsModal) {
+        attributionsModal.addEventListener("click", function (e) {
+            if (e.target === attributionsModal) {
+                closeAttributionsModal();
+            }
+        });
+    }
 
     // Modal copy-link button
     if (modalCopyLink) {

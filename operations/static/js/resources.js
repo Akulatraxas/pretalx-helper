@@ -80,9 +80,11 @@
             tdDepts.appendChild(pillsWrap);
             tr.appendChild(tdDepts);
 
-            // Assigned to (count placeholder — we don't have a fast query for this right now)
+            // Assigned to: show count link that opens modal
             const tdAssigned = el('td');
-            tdAssigned.textContent = '—';
+            tdAssigned.dataset.resourceId   = res.id;
+            tdAssigned.dataset.resourceName = res.name;
+            renderAssignedCell(tdAssigned, res);
             tr.appendChild(tdAssigned);
 
             // Edit button
@@ -211,11 +213,165 @@
     btnAdd    && btnAdd.addEventListener('click', openCreate);
     btnCancel && btnCancel.addEventListener('click', closePanel);
 
-    // Close panel on Escape
+    // ---------------------------------------------------------------------------
+    // Assigned-to: count and usage modal — element refs
+    // ---------------------------------------------------------------------------
+
+    const usageOverlay      = document.getElementById('usage-modal-overlay');
+    const usageModalBody    = document.getElementById('usage-modal-body');
+    const usageResourceName = document.getElementById('usage-modal-resource-name');
+    const usageCloseBtn     = document.getElementById('usage-modal-close');
+
+    // Close panel / modal on Escape
     document.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Escape' && !formPanel.classList.contains('hidden')) closePanel();
+        if (ev.key === 'Escape') {
+            if (!formPanel.classList.contains('hidden')) closePanel();
+            if (usageOverlay && !usageOverlay.classList.contains('hidden')) closeUsageModal();
+        }
     });
 
     // Boot
     loadResources();
+
+    // ---------------------------------------------------------------------------
+    // Assigned-to: count and usage modal — logic
+    // ---------------------------------------------------------------------------
+
+    /** Render the Assigned-To cell: shows a clickable count or a muted dash */
+    function renderAssignedCell(td, res) {
+        apiFetch('/api/resources/' + res.id + '/usages').then(data => {
+            const count = data.total || 0;
+            td.innerHTML = '';
+            if (count === 0) {
+                const dash = el('span', { cls: 'assignment-empty' });
+                dash.textContent = '—';
+                td.appendChild(dash);
+            } else {
+                const link = el('button', { cls: 'btn-link assigned-count-link' });
+                link.textContent = count + ' event' + (count !== 1 ? 's' : '');
+                link.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    openUsageModal(res.id, res.name);
+                });
+                td.appendChild(link);
+            }
+        }).catch(() => {
+            const dash = el('span', { cls: 'assignment-empty' });
+            dash.textContent = '—';
+            td.innerHTML = '';
+            td.appendChild(dash);
+        });
+    }
+
+    async function openUsageModal(resourceId, resourceName) {
+        if (!usageOverlay) return;
+        if (usageResourceName) usageResourceName.textContent = resourceName;
+        usageModalBody.innerHTML = '';
+        const loadDiv = el('div', { cls: 'usage-modal-loading' });
+        const spinner = el('div', { cls: 'loading-spinner' });
+        loadDiv.appendChild(spinner);
+        loadDiv.appendChild(txt(' Loading…'));
+        usageModalBody.appendChild(loadDiv);
+        usageOverlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+
+        try {
+            const data = await apiFetch('/api/resources/' + resourceId + '/usages');
+            renderUsageModal(data);
+        } catch (e) {
+            usageModalBody.innerHTML = '';
+            const errEl = el('p', { cls: 'usage-modal-error' });
+            errEl.textContent = 'Failed to load: ' + e.message;
+            usageModalBody.appendChild(errEl);
+        }
+    }
+
+    function renderUsageModal(data) {
+        usageModalBody.innerHTML = '';
+        const usages = data.usages || [];
+
+        if (usages.length === 0) {
+            const empty = el('div', { cls: 'usage-modal-empty' });
+            const icon  = el('div', { cls: 'empty-icon' });
+            icon.textContent = '📭';
+            const msg   = el('p');
+            msg.textContent = 'Not assigned to any events.';
+            empty.appendChild(icon);
+            empty.appendChild(msg);
+            usageModalBody.appendChild(empty);
+            return;
+        }
+
+        const list = el('div', { cls: 'usage-event-list' });
+
+        for (const u of usages) {
+            const card = el('div', { cls: 'usage-event-card' });
+
+            // Code + title header
+            const titleRow = el('div', { cls: 'usage-event-title-row' });
+            const codeEl   = el('span', { cls: 'usage-event-code' });
+            codeEl.textContent = u.submission_code;
+            const titleEl  = el('span', { cls: 'usage-event-title' });
+            titleEl.textContent = u.title;
+            titleRow.appendChild(codeEl);
+            titleRow.appendChild(titleEl);
+            card.appendChild(titleRow);
+
+            // Note / dept override
+            if (u.note) {
+                const noteEl = el('div', { cls: 'usage-event-note' });
+                noteEl.textContent = 'Note: ' + u.note;
+                card.appendChild(noteEl);
+            }
+            if (u.department_override) {
+                const deptEl = el('div', { cls: 'usage-event-dept' });
+                deptEl.appendChild(txt('Dept override: '));
+                deptEl.appendChild(deptPill(u.department_override));
+                card.appendChild(deptEl);
+            }
+
+            // Slots
+            if ((u.slots || []).length > 0) {
+                const slotsEl = el('div', { cls: 'usage-event-slots' });
+                for (const slot of u.slots) {
+                    const slotEl = el('div', { cls: 'usage-slot' });
+                    const timeEl = el('span', { cls: 'usage-slot-time' });
+                    const start  = fmtTime(slot.start);
+                    const end    = fmtTime(slot.end);
+                    const date   = fmtDate(slot.start);
+                    timeEl.textContent = date + ' · ' + start + '–' + end;
+                    slotEl.appendChild(timeEl);
+                    if (slot.room_name) {
+                        const roomEl = el('span', { cls: 'usage-slot-room' });
+                        roomEl.textContent = ' @ ' + slot.room_name;
+                        slotEl.appendChild(roomEl);
+                    }
+                    slotsEl.appendChild(slotEl);
+                }
+                card.appendChild(slotsEl);
+            }
+
+            // Speakers
+            if ((u.speakers || []).length > 0) {
+                const spEl = el('div', { cls: 'usage-event-speakers' });
+                spEl.textContent = u.speakers.map(s => s.name).join(', ');
+                card.appendChild(spEl);
+            }
+
+            list.appendChild(card);
+        }
+
+        usageModalBody.appendChild(list);
+    }
+
+    function closeUsageModal() {
+        if (!usageOverlay) return;
+        usageOverlay.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    usageCloseBtn   && usageCloseBtn.addEventListener('click', closeUsageModal);
+    usageOverlay    && usageOverlay.addEventListener('click', (ev) => {
+        if (ev.target === usageOverlay) closeUsageModal();
+    });
 })();

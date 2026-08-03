@@ -269,6 +269,39 @@ def api_resources_delete(rid):
     return jsonify({"ok": True})
 
 
+@app.route(f"{BASE_PATH}/api/resources/<int:rid>/usages")
+@auth.require_read
+def api_resource_usages(rid):
+    """
+    Return all submissions that have this resource assigned, enriched with
+    slot/title data from the Pretalx cache.
+    """
+    resource = db.get_resource(rid)
+    if not resource:
+        return jsonify({"error": "Resource not found"}), 404
+
+    usages = db.get_resource_usage(rid)
+
+    cache = pretalx_cache.get_cache()
+    sub_map = cache.get("submissions_map", {}) if cache else {}
+
+    result = []
+    for u in usages:
+        code = u["submission_code"]
+        sub  = sub_map.get(code)
+        result.append({
+            "submission_code":  code,
+            "note":             u.get("note"),
+            "department_override": u.get("department_override"),
+            "title":            sub["title"]    if sub else code,
+            "submission_type":  sub["submission_type"] if sub else None,
+            "slots":            sub["slots"]    if sub else [],
+            "speakers":         sub["speakers"] if sub else [],
+        })
+
+    return jsonify({"resource": resource, "usages": result, "total": len(result)})
+
+
 # ---------------------------------------------------------------------------
 # API — Submission resource assignments
 # ---------------------------------------------------------------------------

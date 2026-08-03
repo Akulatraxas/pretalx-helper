@@ -199,6 +199,18 @@ def delete_resource(resource_id, user_email=None):
         _audit(conn, user_email, "delete_resource", f"id={resource_id}")
 
 
+def get_resource_usage(resource_id):
+    """Return all submission codes assigned this resource, with assignment metadata."""
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT sr.submission_code, sr.note, sr.department_override
+            FROM submission_resources sr
+            WHERE sr.resource_id = :rid
+            ORDER BY sr.submission_code
+        """), {"rid": resource_id}).fetchall()
+        return [_to_dict(r) for r in rows]
+
+
 # ---------------------------------------------------------------------------
 # Submission assignments (resources + comments)
 # ---------------------------------------------------------------------------

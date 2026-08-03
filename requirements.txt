@@ -3,4 +3,4 @@
 # The following are needed by helper scripts only:
 
 # QR code generation (helper_createRoomLinks.py)
-qrcode[pil]>=7.4
+qrcode[pil]>=8.2

@@ -29,6 +29,17 @@
         {% endfor %}
     </div>
 
+    <!-- Resource filter bar -->
+    <div class="resource-filter-bar" id="resource-filter-bar" aria-label="Filter by resource">
+        <span class="resource-filter-label">Filter by resource:</span>
+        <div class="resource-filter-chips" id="resource-filter-chips" role="group" aria-label="Resource toggles">
+            <div class="resource-filter-loading">Loading…</div>
+        </div>
+        <button class="btn btn-ghost btn-sm resource-filter-clear hidden" id="resource-filter-clear" aria-label="Clear resource filter">
+            ✕ Clear
+        </button>
+    </div>
+
     <!-- Output table -->
     <div class="table-container scrollable-table" id="output-table-container" role="tabpanel">
         <table class="data-table output-table" id="output-table" aria-label="Events output">

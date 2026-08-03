@@ -82,6 +82,23 @@
         </table>
     </div>
 
+
+    <!-- Resource usage modal -->
+    <div class="usage-modal-overlay hidden" id="usage-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="usage-modal-title">
+        <div class="usage-modal" id="usage-modal">
+            <div class="usage-modal-header">
+                <h2 class="usage-modal-title" id="usage-modal-title">Assigned to: <span id="usage-modal-resource-name"></span></h2>
+                <button class="btn btn-ghost btn-sm usage-modal-close" id="usage-modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="usage-modal-body" id="usage-modal-body">
+                <div class="usage-modal-loading">
+                    <div class="loading-spinner"></div>
+                    Loading…
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 {% endblock %}
 

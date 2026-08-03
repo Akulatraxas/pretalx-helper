@@ -7,6 +7,7 @@
 
     let currentDept = 'all';
     let currentRows = [];
+    let selectedResourceIds = new Set();  // IDs of resources selected in the filter
 
     const tabs = document.querySelectorAll('.dept-tab');
     const tbody = document.getElementById('output-tbody');
@@ -14,6 +15,8 @@
     const emptyEl = document.getElementById('output-empty');
     const footerEl = document.getElementById('output-footer');
     const exportBtn = document.getElementById('btn-export-csv');
+    const filterChipsEl = document.getElementById('resource-filter-chips');
+    const filterClearBtn = document.getElementById('resource-filter-clear');
 
     // ---------------------------------------------------------------------------
     // Load output data
@@ -29,6 +32,81 @@
         } catch (e) {
             showToast('Failed to load output: ' + e.message, 'error');
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Resource filter
+    // ---------------------------------------------------------------------------
+
+    async function loadResourceFilter() {
+        if (!filterChipsEl) return;
+        try {
+            const data = await apiFetch('/api/resources');
+            const resources = (data.resources || []).sort((a, b) => a.name.localeCompare(b.name));
+            filterChipsEl.innerHTML = '';
+            if (resources.length === 0) {
+                const note = el('span', { cls: 'resource-filter-empty' });
+                note.textContent = 'No resources defined';
+                filterChipsEl.appendChild(note);
+                return;
+            }
+            for (const res of resources) {
+                const chip = el('button', {
+                    cls: 'resource-filter-chip',
+                    type: 'button',
+                    'aria-pressed': 'false',
+                    'data-resource-id': String(res.id),
+                    id: `res-chip-${res.id}`,
+                });
+                chip.textContent = res.name;
+                chip.addEventListener('click', () => toggleResourceFilter(res.id, chip));
+                filterChipsEl.appendChild(chip);
+            }
+        } catch (e) {
+            if (filterChipsEl) filterChipsEl.innerHTML = '';
+        }
+    }
+
+    function toggleResourceFilter(resourceId, chipEl) {
+        if (selectedResourceIds.has(resourceId)) {
+            selectedResourceIds.delete(resourceId);
+            chipEl.classList.remove('active');
+            chipEl.setAttribute('aria-pressed', 'false');
+        } else {
+            selectedResourceIds.add(resourceId);
+            chipEl.classList.add('active');
+            chipEl.setAttribute('aria-pressed', 'true');
+        }
+        updateFilterClearBtn();
+        renderTable();
+        updateFooter();
+    }
+
+    function updateFilterClearBtn() {
+        if (!filterClearBtn) return;
+        if (selectedResourceIds.size > 0) {
+            filterClearBtn.classList.remove('hidden');
+        } else {
+            filterClearBtn.classList.add('hidden');
+        }
+    }
+
+    filterClearBtn && filterClearBtn.addEventListener('click', () => {
+        selectedResourceIds.clear();
+        filterChipsEl && filterChipsEl.querySelectorAll('.resource-filter-chip').forEach(chip => {
+            chip.classList.remove('active');
+            chip.setAttribute('aria-pressed', 'false');
+        });
+        filterClearBtn.classList.add('hidden');
+        renderTable();
+        updateFooter();
+    });
+
+    function getFilteredRows() {
+        if (selectedResourceIds.size === 0) return currentRows;
+        return currentRows.filter(row =>
+            (row.resources || []).some(r => selectedResourceIds.has(r.resource_id))
+        );
     }
 
     function showLoading() {
@@ -51,7 +129,9 @@
     function renderTable() {
         tbody.innerHTML = '';
 
-        if (currentRows.length === 0) {
+        const rows = getFilteredRows();
+
+        if (rows.length === 0) {
             tableEl.style.display = 'none';
             emptyEl.classList.remove('hidden');
             return;
@@ -62,7 +142,7 @@
 
         let lastDay = null;
 
-        for (const row of currentRows) {
+        for (const row of rows) {
             // Day separator rows
             if (row.day_label !== lastDay) {
                 lastDay = row.day_label;
@@ -195,7 +275,11 @@
 
     function updateFooter() {
         if (!footerEl) return;
-        footerEl.textContent = `${currentRows.length} event slot${currentRows.length !== 1 ? 's' : ''} · Department: ${currentDept === 'all' ? 'All' : currentDept}`;
+        const rows = getFilteredRows();
+        const filterNote = selectedResourceIds.size > 0
+            ? ` · Filtered by ${selectedResourceIds.size} resource${selectedResourceIds.size !== 1 ? 's' : ''}`
+            : '';
+        footerEl.textContent = `${rows.length} event slot${rows.length !== 1 ? 's' : ''} · Department: ${currentDept === 'all' ? 'All' : currentDept}${filterNote}`;
     }
 
     // ---------------------------------------------------------------------------
@@ -234,5 +318,6 @@
     // ---------------------------------------------------------------------------
 
     loadOutput('all');
+    loadResourceFilter();
 
 })();

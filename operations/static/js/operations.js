@@ -6,32 +6,32 @@
 (function () {
     'use strict';
 
-    let currentSlots  = [];
+    let currentSlots = [];
     let autoRefreshTimer = null;
     const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
-    const hoursSelect    = document.getElementById('hours-select');
-    const showAllCheck   = document.getElementById('ops-show-all');
-    const testModeCheck  = document.getElementById('ops-test-mode');
-    const testAtInput    = document.getElementById('ops-test-at');
-    const testBadge      = document.getElementById('ops-test-badge');
-    const refreshBtn     = document.getElementById('ops-refresh-btn');
-    const printBtn       = document.getElementById('ops-print-btn');
-    const kanbanGrid     = document.getElementById('kanban-grid');
-    const placeholder    = document.getElementById('ops-placeholder');
-    const countLabel     = document.getElementById('ops-count-label');
-    const liveDot        = document.getElementById('ops-live-dot');
-    const printArea      = document.getElementById('print-area');
-    const printCards     = document.getElementById('print-cards');
-    const printTitle     = document.getElementById('print-title');
-    const printMeta      = document.getElementById('print-meta');
+    const hoursSelect = document.getElementById('hours-select');
+    const showAllCheck = document.getElementById('ops-show-all');
+    const testModeCheck = document.getElementById('ops-test-mode');
+    const testAtInput = document.getElementById('ops-test-at');
+    const testBadge = document.getElementById('ops-test-badge');
+    const refreshBtn = document.getElementById('ops-refresh-btn');
+    const printBtn = document.getElementById('ops-print-btn');
+    const kanbanGrid = document.getElementById('kanban-grid');
+    const placeholder = document.getElementById('ops-placeholder');
+    const countLabel = document.getElementById('ops-count-label');
+    const liveDot = document.getElementById('ops-live-dot');
+    const printArea = document.getElementById('print-area');
+    const printCards = document.getElementById('print-cards');
+    const printTitle = document.getElementById('print-title');
+    const printMeta = document.getElementById('print-meta');
 
     // ---------------------------------------------------------------------------
     // Load upcoming
     // ---------------------------------------------------------------------------
 
     async function loadUpcoming() {
-        const hours   = hoursSelect?.value || 4;
+        const hours = hoursSelect?.value || 4;
         const showAll = showAllCheck?.checked ? '&all=1' : '';
 
         // Build optional ?at= parameter for test mode
@@ -98,20 +98,20 @@
 
         const body = el('div', { cls: 'kanban-card-body' });
 
-        // Time
-        const time = el('div', { cls: 'kanban-time' });
+        // Time + Room (same row)
+        const timeRow = el('div', { cls: 'kanban-time-row' });
+        const time = el('span', { cls: 'kanban-time' });
         time.textContent = fmtTimeRange(slot.start, slot.end);
-        body.appendChild(time);
-
-        // Room
-        const room = el('div', { cls: 'kanban-room' });
+        timeRow.appendChild(time);
+        const room = el('span', { cls: 'kanban-room' });
         room.textContent = slot.room_name || '—';
-        body.appendChild(room);
+        timeRow.appendChild(room);
+        body.appendChild(timeRow);
 
-        // Code
-        const codeEl = el('div', { cls: 'kanban-code' });
-        codeEl.textContent = slot.code;
-        body.appendChild(codeEl);
+        // Code - Remove for now, just use code for URLs
+        //const codeEl = el('div', { cls: 'kanban-code' });
+        //codeEl.textContent = slot.code;
+        //body.appendChild(codeEl);
 
         // Title
         const title = el('div', { cls: 'kanban-title' });
@@ -192,15 +192,15 @@
 
     function updateStatus(data = {}) {
         if (countLabel) {
-            const n       = currentSlots.length;
-            const hours   = hoursSelect?.value || 4;
-            const isTest  = data.is_test_mode || false;
-            let refLabel  = '';
+            const n = currentSlots.length;
+            const hours = hoursSelect?.value || 4;
+            const isTest = data.is_test_mode || false;
+            let refLabel = '';
             if (isTest && data.reference_time) {
                 try {
                     const d = new Date(data.reference_time);
-                    refLabel = ` · ref: ${d.toLocaleString('en-GB', { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}`;
-                } catch (_) {}
+                    refLabel = ` · ref: ${d.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
+                } catch (_) { }
             }
             const refresh = isTest ? '' : ' — auto-refreshes every 5 min';
             countLabel.textContent = `${n} slot${n !== 1 ? 's' : ''} in the next ${hours} hour${hours > 1 ? 's' : ''}${refLabel}${refresh}`;
@@ -247,13 +247,14 @@
 
         const body = el('div', { cls: 'print-card-body' });
 
-        const time = el('div', { cls: 'print-card-time' });
+        const timeRow = el('div', { cls: 'print-card-time-row' });
+        const time = el('span', { cls: 'print-card-time' });
         time.textContent = fmtTimeRange(slot.start, slot.end);
-        body.appendChild(time);
-
-        const room = el('div', { cls: 'print-card-room' });
+        timeRow.appendChild(time);
+        const room = el('span', { cls: 'print-card-room' });
         room.textContent = slot.room_name || '—';
-        body.appendChild(room);
+        timeRow.appendChild(room);
+        body.appendChild(timeRow);
 
         const code = el('div', { cls: 'print-card-code' });
         code.textContent = slot.code;

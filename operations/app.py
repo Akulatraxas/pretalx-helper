@@ -28,7 +28,8 @@ from db import DEPARTMENTS
 PRETALX_URL    = os.environ.get("PRETALX_URL", "")
 PRETALX_APIKEY = os.environ.get("PRETALX_APIKEY", "")
 PRETALX_EVENT  = os.environ.get("PRETALX_EVENT_SLUG", "")
-BASE_PATH      = os.environ.get("BASE_PATH", "/ef-operations")
+BASE_PATH       = os.environ.get("BASE_PATH", "/ef-operations")
+EVENT_TIMEZONE  = os.environ.get("EVENT_TIMEZONE", "Europe/Berlin")
 
 if not PRETALX_URL or not PRETALX_APIKEY:
     sys.stderr.write("Error: PRETALX_URL and PRETALX_APIKEY are required.\n")
@@ -508,6 +509,7 @@ def api_upcoming():
     Example: ?at=2026-08-19T10:00&hours=4
     """
     from datetime import datetime, timezone, timedelta
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
     cache = pretalx_cache.get_cache()
     if cache is None:
@@ -521,19 +523,32 @@ def api_upcoming():
 
     include_all = request.args.get("all") == "1"
 
-    # ?at= override: lets you test against a specific point in time
+    # Resolve the event's local timezone (used to interpret naive ?at= values)
+    try:
+        event_tz = ZoneInfo(EVENT_TIMEZONE)
+    except ZoneInfoNotFoundError:
+        logger.warning("Unknown EVENT_TIMEZONE %r, falling back to UTC", EVENT_TIMEZONE)
+        event_tz = timezone.utc
+
+    # ?at= override: lets you test against a specific point in time.
+    # The browser datetime-local input always sends a naive string (no offset),
+    # which represents a wall-clock time in the event's local timezone.
+    # Attach event_tz so the comparison is done against the correct instant.
     at_str = (request.args.get("at") or "").strip()
     if at_str:
         try:
             now = datetime.fromisoformat(at_str)
             if now.tzinfo is None:
-                now = now.replace(tzinfo=timezone.utc)
+                now = now.replace(tzinfo=event_tz)
             logger.info("Upcoming: using test reference time %s", now.isoformat())
         except ValueError:
             logger.warning("Upcoming: invalid ?at= value %r, using real now", at_str)
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=event_tz)
     else:
-        now = datetime.now(tz=timezone.utc)
+        # Real mode: use current wall-clock time in event timezone so that
+        # the displayed reference time is human-readable and consistent with
+        # the slot timestamps from Pretalx (which carry the event's offset).
+        now = datetime.now(tz=event_tz)
 
     deadline = now + timedelta(hours=hours)
 

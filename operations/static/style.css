@@ -258,6 +258,82 @@ ul {
     flex: 1;
 }
 
+/* --- Mobile hamburger (hidden on desktop) --- */
+.nav-hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px;
+    border-radius: var(--radius-md);
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.hamburger-bar {
+    display: block;
+    width: 20px;
+    height: 2px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.85);
+    transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+.nav-hamburger.is-open .hamburger-bar:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+.nav-hamburger.is-open .hamburger-bar:nth-child(2) {
+    opacity: 0;
+}
+.nav-hamburger.is-open .hamburger-bar:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+/* --- Mobile dropdown nav --- */
+.mobile-nav-dropdown {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    z-index: 199;
+    background: rgba(0, 89, 83, 0.98);
+    border-bottom: 1px solid rgba(0,0,0,0.18);
+    backdrop-filter: blur(14px);
+    display: flex;
+    flex-direction: column;
+    padding: 8px 12px 12px;
+    gap: 2px;
+    box-shadow: var(--shadow-md);
+    /* Only visible on mobile — see @media below */
+}
+
+.mobile-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.80);
+    transition: background var(--transition-fast), color var(--transition-fast);
+    position: relative;
+}
+
+.mobile-nav-link:hover {
+    background: rgba(255,255,255,0.12);
+    color: #ffffff;
+}
+
+.mobile-nav-link.active {
+    background: rgba(255,255,255,0.18);
+    color: #ffffff;
+}
+
+
 .nav-link {
     display: flex;
     align-items: center;
@@ -1820,10 +1896,12 @@ ul {
 
 .kanban-grid {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 20px 24px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+    grid-auto-rows: min-content;    /* rows must NOT stretch to fill container height */
     gap: 16px;
     align-content: start;
 }
@@ -1832,7 +1910,8 @@ ul {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    overflow: hidden;
+    /* No overflow: hidden here — that was clipping card body content.
+       The track bar handles its own top radius instead. */
     transition: transform var(--transition-base), box-shadow var(--transition-base);
     animation: fadeIn var(--transition-base) forwards;
 }
@@ -1849,10 +1928,20 @@ ul {
 .kanban-card-track {
     height: 4px;
     background: var(--accent-primary);
+    /* Clip top corners to match card border-radius without overflow:hidden on card */
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .kanban-card-body {
     padding: 14px 16px;
+}
+
+.kanban-time-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
 }
 
 .kanban-time {
@@ -1861,13 +1950,17 @@ ul {
     letter-spacing: 0.05em;
     color: var(--accent-amber);
     font-variant-numeric: tabular-nums;
-    margin-bottom: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .kanban-room {
     font-size: 0.72rem;
     color: var(--text-muted);
-    margin-bottom: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .kanban-title {
@@ -2035,6 +2128,115 @@ ul {
 }
 
 /* ============================================================
+   RESPONSIVE — mobile breakpoints
+   ============================================================ */
+
+@media (max-width: 640px) {
+    /* Hide desktop nav, show hamburger */
+    .main-nav {
+        display: none;
+    }
+    .nav-hamburger {
+        display: flex;
+    }
+
+    /* Hide desktop-only elements in header on small screens */
+    .cache-status,
+    .brand-subtitle {
+        display: none;
+    }
+
+    /* Page header: stack vertically */
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px 12px;
+    }
+
+    /* Operations controls: wrap more aggressively */
+    .ops-controls {
+        width: 100%;
+        gap: 6px;
+    }
+    .ops-controls .form-label-inline {
+        display: none; /* hide "Next" label — context is clear */
+    }
+    .ops-test-at {
+        width: 100%;
+    }
+
+    /* Kanban grid: single column, proper padding */
+    .kanban-grid {
+        padding: 12px 12px;
+        gap: 12px;
+        /* single column on very small screens */
+        grid-template-columns: 1fr;
+    }
+
+    /* Status bar */
+    .ops-status-bar {
+        padding: 6px 12px;
+        flex-wrap: wrap;
+    }
+
+    /* General table: allow horizontal scroll */
+    .table-container {
+        padding: 0 12px 16px;
+    }
+
+    /* Output page: compact the fixed-height top sections so the table
+       gets as much vertical room as possible on small screens */
+    .page-output .page-header {
+        padding: 10px 12px 8px;
+        gap: 8px;
+    }
+    .page-output .page-header .page-title {
+        font-size: 1.1rem;
+    }
+    .page-output .page-header .page-subtitle {
+        display: none;
+    }
+    .dept-tabs {
+        padding: 6px 12px;
+        gap: 3px;
+    }
+    .dept-tab {
+        padding: 4px 10px;
+        font-size: 0.78rem;
+    }
+    .resource-filter-bar {
+        padding: 5px 12px;
+        gap: 6px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+    .resource-filter-label {
+        display: none;
+    }
+    .resource-filter-chips {
+        flex-wrap: nowrap;
+    }
+
+    /* Toast: full-width bottom */
+    #toast-container {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+    }
+}
+
+@media (min-width: 641px) {
+    /* Ensure mobile dropdown is never shown on desktop even if JS fails */
+    .mobile-nav-dropdown {
+        display: none !important;
+    }
+    .nav-hamburger {
+        display: none !important;
+    }
+}
+
+/* ============================================================
    PRINT STYLES (Kanban cards)
    ============================================================ */
 
@@ -2044,6 +2246,20 @@ ul {
         color: #111 !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+    }
+
+    /* Reset the screen layout height/overflow so print-area can flow across
+       as many pages as needed. Without this, everything is clamped to one
+       viewport height and only the first screenful of cards renders. */
+    .main-content {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .page-operations {
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
     }
 
     .app-header,
@@ -2081,6 +2297,7 @@ ul {
     .print-cards {
         display: grid;
         grid-template-columns: 1fr 1fr;
+        grid-auto-rows: min-content;
         gap: 16px;
         padding: 0 8px;
     }
@@ -2088,7 +2305,7 @@ ul {
     .print-card {
         border: 1.5px solid #bbb;
         border-radius: 8px;
-        overflow: hidden;
+        /* No overflow: hidden — clipped content. Track bar handles its own corner radius. */
         break-inside: avoid;
         page-break-inside: avoid;
     }
@@ -2096,16 +2313,26 @@ ul {
     .print-card-track-bar {
         height: 5px;
         background: #005953;
+        border-radius: 6px 6px 0 0;
     }
 
     .print-card-body {
         padding: 12px;
     }
 
+    .print-card-time-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 3px;
+    }
+
     .print-card-time {
         font-size: 0.8rem;
         font-weight: 700;
         color: #b45309;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .print-card-room {

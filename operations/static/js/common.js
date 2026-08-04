@@ -157,3 +157,43 @@ function fmtDate(isoStr) {
         }
     } catch (_) { /* non-fatal */ }
 })();
+
+// ---------------------------------------------------------------------------
+// Mobile nav hamburger toggle (CSP-safe — lives in external script, not inline)
+// ---------------------------------------------------------------------------
+
+(function () {
+    const btn      = document.getElementById('nav-hamburger');
+    const dropdown = document.getElementById('mobile-nav-dropdown');
+    if (!btn || !dropdown) return;
+
+    function open() {
+        dropdown.classList.remove('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+        btn.classList.add('is-open');
+    }
+    function close() {
+        dropdown.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.classList.remove('is-open');
+    }
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        dropdown.classList.contains('hidden') ? open() : close();
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!dropdown.contains(e.target)) close();
+    });
+
+    // Mirror conflict badge count into mobile dropdown
+    const desktopBadge = document.getElementById('nav-conflict-badge');
+    const mobileBadge  = document.getElementById('mobile-conflict-badge');
+    if (desktopBadge && mobileBadge) {
+        new MutationObserver(function () {
+            mobileBadge.textContent = desktopBadge.textContent;
+            mobileBadge.classList.toggle('hidden', desktopBadge.classList.contains('hidden'));
+        }).observe(desktopBadge, { childList: true, attributes: true, attributeFilter: ['class'] });
+    }
+}());

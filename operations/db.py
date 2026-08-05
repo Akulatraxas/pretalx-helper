@@ -400,3 +400,94 @@ def get_codes_with_assignments():
             SELECT DISTINCT submission_code FROM submission_comments
         """)).fetchall()
         return {row._mapping["submission_code"] for row in rows}
+
+
+# ---------------------------------------------------------------------------
+# Operation events (take / complete / unassign)
+# ---------------------------------------------------------------------------
+
+def get_operation_event(submission_code, slot_index):
+    """Return the operation_events row for a slot, or None if not tracked yet."""
+    with engine.connect() as conn:
+        row = conn.execute(text("""
+            SELECT id, submission_code, slot_index, assigned_to, is_completed, updated_at
+            FROM operation_events
+            WHERE submission_code = :code AND slot_index = :idx
+        """), {"code": submission_code, "idx": slot_index}).fetchone()
+        return _to_dict(row) if row else None
+
+
+def get_operation_events_for_codes(codes):
+    """
+    Return a dict keyed by (code, slot_index) for all matching codes.
+    Used to annotate the upcoming feed in bulk.
+    """
+    if not codes:
+        return {}
+    placeholders = ", ".join(f":c{i}" for i in range(len(codes)))
+    params = {f"c{i}": c for i, c in enumerate(codes)}
+    with engine.connect() as conn:
+        rows = conn.execute(text(f"""
+            SELECT submission_code, slot_index, assigned_to, is_completed, updated_at
+            FROM operation_events
+            WHERE submission_code IN ({placeholders})
+        """), params).fetchall()
+    result = {}
+    for row in rows:
+        r = _to_dict(row)
+        result[(r["submission_code"], r["slot_index"])] = r
+    return result
+
+
+def get_operation_events_for_user(user_email):
+    """Return all (submission_code, slot_index) pairs assigned to user_email."""
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT submission_code, slot_index
+            FROM operation_events
+            WHERE assigned_to = :email
+        """), {"email": user_email}).fetchall()
+    return {(r._mapping["submission_code"], r._mapping["slot_index"]) for r in rows}
+
+
+def _upsert_operation_event(conn, submission_code, slot_index, assigned_to, is_completed):
+    """Insert or update an operation_events row."""
+    conn.execute(text("""
+        INSERT INTO operation_events (submission_code, slot_index, assigned_to, is_completed, updated_at)
+        VALUES (:code, :idx, :assigned_to, :completed, datetime('now'))
+        ON CONFLICT(submission_code, slot_index) DO UPDATE SET
+            assigned_to  = excluded.assigned_to,
+            is_completed = excluded.is_completed,
+            updated_at   = excluded.updated_at
+    """), {
+        "code":        submission_code,
+        "idx":         slot_index,
+        "assigned_to": assigned_to,
+        "completed":   1 if is_completed else 0,
+    })
+
+
+def take_operation_event(submission_code, slot_index, user_email):
+    """Assign a slot to user_email (overwrites any existing assignee)."""
+    with engine.begin() as conn:
+        _upsert_operation_event(conn, submission_code, slot_index, user_email, False)
+        _audit(conn, user_email, "take_event",
+               f"code={submission_code} slot={slot_index}")
+
+
+def complete_operation_event(submission_code, slot_index, user_email):
+    """Mark a slot as completed (keeps assignee if already set)."""
+    with engine.begin() as conn:
+        existing = get_operation_event(submission_code, slot_index)
+        assigned_to = (existing or {}).get("assigned_to") if existing else None
+        _upsert_operation_event(conn, submission_code, slot_index, assigned_to, True)
+        _audit(conn, user_email, "complete_event",
+               f"code={submission_code} slot={slot_index}")
+
+
+def unassign_operation_event(submission_code, slot_index, user_email):
+    """Remove the assignee and reset completion status for a slot."""
+    with engine.begin() as conn:
+        _upsert_operation_event(conn, submission_code, slot_index, None, False)
+        _audit(conn, user_email, "unassign_event",
+               f"code={submission_code} slot={slot_index}")

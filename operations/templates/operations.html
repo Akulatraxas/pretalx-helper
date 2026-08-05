@@ -23,6 +23,9 @@
             <label class="filter-toggle" title="Show all events, not just those with resources">
                 <input type="checkbox" id="ops-show-all"> Show all
             </label>
+            <label class="filter-toggle" title="Only show events assigned to me">
+                <input type="checkbox" id="ops-show-mine"> Show mine
+            </label>
             <label class="filter-toggle ops-test-toggle" title="Override reference time for testing">
                 <input type="checkbox" id="ops-test-mode"> 🧪 Test mode
             </label>
@@ -54,6 +57,59 @@
             <div class="print-meta" id="print-meta"></div>
         </div>
         <div class="print-cards" id="print-cards"></div>
+    </div>
+
+    <!-- Event detail modal -->
+    <div class="ops-modal-overlay hidden" id="ops-modal-overlay" role="dialog" aria-modal="true"
+         aria-labelledby="ops-modal-title">
+        <div class="ops-modal" id="ops-modal">
+            <div class="ops-modal-header">
+                <div class="ops-modal-track-bar" id="ops-modal-track-bar"></div>
+                <div class="ops-modal-header-content">
+                    <div class="ops-modal-time-row">
+                        <span class="ops-modal-time" id="ops-modal-time"></span>
+                        <span class="ops-modal-room" id="ops-modal-room"></span>
+                    </div>
+                    <h2 class="ops-modal-title" id="ops-modal-title"></h2>
+                    <div class="ops-modal-speakers" id="ops-modal-speakers"></div>
+                </div>
+                <button class="btn btn-ghost btn-sm ops-modal-close" id="ops-modal-close"
+                        aria-label="Close">✕</button>
+            </div>
+
+            <div class="ops-modal-body" id="ops-modal-body">
+
+                <!-- Status banner -->
+                <div class="ops-modal-status" id="ops-modal-status"></div>
+
+                <!-- Action buttons -->
+                {% if user and user.can_write %}
+                <div class="ops-modal-actions" id="ops-modal-actions">
+                    <button class="btn btn-primary btn-sm" id="ops-btn-take">✋ Take Event</button>
+                    <button class="btn btn-success btn-sm" id="ops-btn-complete">✔ Complete Event</button>
+                    <button class="btn btn-ghost btn-sm ops-btn-danger" id="ops-btn-unassign">✗ Unassign</button>
+                </div>
+                {% endif %}
+
+                <!-- Resources -->
+                <div class="ops-modal-section" id="ops-modal-resources-section">
+                    <div class="ops-modal-section-label">Resources</div>
+                    <div id="ops-modal-resources"></div>
+                </div>
+
+                <!-- Comments -->
+                <div class="ops-modal-section" id="ops-modal-comments-section">
+                    <div class="ops-modal-section-label">Notes</div>
+                    <div id="ops-modal-comments"></div>
+                </div>
+
+                <!-- Conflict warning -->
+                <div class="ops-modal-conflict hidden" id="ops-modal-conflict">
+                    ⚠ Resource conflict detected
+                </div>
+
+            </div>
+        </div>
     </div>
 
 </div>

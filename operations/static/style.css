@@ -2394,3 +2394,285 @@ ul {
         color: #dc2626;
     }
 }
+
+/* ============================================================
+   OPERATIONS — CARD STATUS STATES
+   ============================================================ */
+
+/* Taken: EF-green diagonal stripe background, no dimming */
+.kanban-card.ops-card-assigned {
+    background-image: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 6px,
+        rgba(0, 89, 83, 0.07) 6px,
+        rgba(0, 89, 83, 0.07) 12px
+    );
+    border-color: rgba(0, 89, 83, 0.28);
+}
+
+/* Completed: dim the whole card.
+   Cannot use `opacity` here — the fadeIn animation uses `forwards` fill which
+   permanently sets opacity:1 and wins the cascade. `filter: opacity()` is not
+   touched by the animation so it applies correctly. */
+.kanban-card.ops-card-completed {
+    filter: opacity(0.4);
+}
+
+.kanban-card-status-row {
+    margin-bottom: 6px;
+}
+
+.ops-status-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+}
+
+.ops-badge-assigned {
+    background: rgba(20, 184, 166, 0.15);
+    color: var(--accent-teal);
+    border: 1px solid rgba(20, 184, 166, 0.35);
+}
+
+.ops-badge-completed {
+    background: rgba(100, 100, 120, 0.15);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+}
+
+/* ============================================================
+   OPERATIONS — EVENT DETAIL MODAL
+   ============================================================ */
+
+.ops-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 10, 20, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+    animation: fadeIn var(--transition-base) forwards;
+}
+
+.ops-modal-overlay.hidden {
+    display: none;
+}
+
+.ops-modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 600px;
+    max-width: calc(100vw - 48px);
+    max-height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    animation: slideUp var(--transition-slow) forwards;
+    overflow: hidden;
+}
+
+.ops-modal-header {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+    position: relative;
+}
+
+.ops-modal-track-bar {
+    width: 4px;
+    border-radius: 2px;
+    align-self: stretch;
+    flex-shrink: 0;
+    min-height: 40px;
+    margin-top: 16px;
+}
+
+.ops-modal-header-content {
+    flex: 1;
+    min-width: 0;
+    padding-top: 16px;
+}
+
+.ops-modal-time-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.ops-modal-time {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent-teal);
+    font-variant-numeric: tabular-nums;
+}
+
+.ops-modal-room {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    padding: 1px 7px;
+    border-radius: var(--radius-sm);
+}
+
+.ops-modal-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 5px;
+    line-height: 1.3;
+}
+
+.ops-modal-speakers {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.ops-modal-close {
+    flex-shrink: 0;
+    margin-top: 12px;
+    font-size: 1rem;
+    opacity: 0.6;
+    transition: opacity var(--transition-base);
+}
+
+.ops-modal-close:hover {
+    opacity: 1;
+}
+
+.ops-modal-body {
+    overflow-y: auto;
+    padding: 18px 20px 24px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Status banner */
+.ops-modal-status {
+    padding: 9px 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.ops-modal-status-open {
+    background: rgba(100, 100, 130, 0.12);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+}
+
+.ops-modal-status-assigned {
+    background: rgba(20, 184, 166, 0.1);
+    color: var(--accent-teal);
+    border: 1px solid rgba(20, 184, 166, 0.3);
+}
+
+.ops-modal-status-completed {
+    background: rgba(100, 150, 100, 0.1);
+    color: #86efac;
+    border: 1px solid rgba(100, 200, 100, 0.25);
+}
+
+/* Action buttons row */
+.ops-modal-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    color: #fff;
+    border: none;
+}
+
+.btn-success:hover:not(:disabled) {
+    background: linear-gradient(135deg, #15803d, #166534);
+    transform: translateY(-1px);
+}
+
+.ops-btn-danger {
+    color: var(--accent-red);
+}
+
+.ops-btn-danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--accent-red);
+}
+
+/* Sections */
+.ops-modal-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ops-modal-section.hidden {
+    display: none;
+}
+
+.ops-modal-section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.ops-modal-resource-item {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 10px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+}
+
+.ops-modal-resource-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.ops-modal-resource-note {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.ops-modal-comment-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.ops-modal-conflict {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent-amber);
+    padding: 8px 12px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: var(--radius-sm);
+}
+
+.ops-modal-conflict.hidden {
+    display: none;
+}

@@ -1,6 +1,7 @@
 /**
  * operations.js — Operations page: upcoming event feed + kanban print.
  * Auto-refreshes every 5 minutes. Print uses browser native print dialog.
+ * Clickable cards open a detail modal with Take / Complete / Unassign actions.
  */
 
 (function () {
@@ -10,29 +11,54 @@
     let autoRefreshTimer = null;
     const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
-    const hoursSelect = document.getElementById('hours-select');
-    const showAllCheck = document.getElementById('ops-show-all');
-    const testModeCheck = document.getElementById('ops-test-mode');
-    const testAtInput = document.getElementById('ops-test-at');
-    const testBadge = document.getElementById('ops-test-badge');
-    const refreshBtn = document.getElementById('ops-refresh-btn');
-    const printBtn = document.getElementById('ops-print-btn');
-    const kanbanGrid = document.getElementById('kanban-grid');
-    const placeholder = document.getElementById('ops-placeholder');
-    const countLabel = document.getElementById('ops-count-label');
-    const liveDot = document.getElementById('ops-live-dot');
-    const printArea = document.getElementById('print-area');
-    const printCards = document.getElementById('print-cards');
-    const printTitle = document.getElementById('print-title');
-    const printMeta = document.getElementById('print-meta');
+    const hoursSelect    = document.getElementById('hours-select');
+    const showAllCheck   = document.getElementById('ops-show-all');
+    const showMineCheck  = document.getElementById('ops-show-mine');
+    const testModeCheck  = document.getElementById('ops-test-mode');
+    const testAtInput    = document.getElementById('ops-test-at');
+    const testBadge      = document.getElementById('ops-test-badge');
+    const refreshBtn     = document.getElementById('ops-refresh-btn');
+    const printBtn       = document.getElementById('ops-print-btn');
+    const kanbanGrid     = document.getElementById('kanban-grid');
+    const placeholder    = document.getElementById('ops-placeholder');
+    const countLabel     = document.getElementById('ops-count-label');
+    const liveDot        = document.getElementById('ops-live-dot');
+    const printArea      = document.getElementById('print-area');
+    const printCards     = document.getElementById('print-cards');
+    const printTitle     = document.getElementById('print-title');
+    const printMeta      = document.getElementById('print-meta');
+
+    // Modal elements
+    const modalOverlay       = document.getElementById('ops-modal-overlay');
+    const modalEl            = document.getElementById('ops-modal');
+    const modalClose         = document.getElementById('ops-modal-close');
+    const modalTrackBar      = document.getElementById('ops-modal-track-bar');
+    const modalTime          = document.getElementById('ops-modal-time');
+    const modalRoom          = document.getElementById('ops-modal-room');
+    const modalTitle         = document.getElementById('ops-modal-title');
+    const modalSpeakers      = document.getElementById('ops-modal-speakers');
+    const modalStatus        = document.getElementById('ops-modal-status');
+    const modalActions       = document.getElementById('ops-modal-actions');
+    const modalResSection    = document.getElementById('ops-modal-resources-section');
+    const modalResList       = document.getElementById('ops-modal-resources');
+    const modalCmtSection    = document.getElementById('ops-modal-comments-section');
+    const modalCmtList       = document.getElementById('ops-modal-comments');
+    const modalConflict      = document.getElementById('ops-modal-conflict');
+    const btnTake            = document.getElementById('ops-btn-take');
+    const btnComplete        = document.getElementById('ops-btn-complete');
+    const btnUnassign        = document.getElementById('ops-btn-unassign');
+
+    // Track which slot is currently shown in the modal
+    let activeSlot = null;
 
     // ---------------------------------------------------------------------------
     // Load upcoming
     // ---------------------------------------------------------------------------
 
     async function loadUpcoming() {
-        const hours = hoursSelect?.value || 4;
+        const hours   = hoursSelect?.value || 4;
         const showAll = showAllCheck?.checked ? '&all=1' : '';
+        const mine    = showMineCheck?.checked ? '&mine=1' : '';
 
         // Build optional ?at= parameter for test mode
         let atParam = '';
@@ -43,7 +69,7 @@
         showLoadingState();
 
         try {
-            const data = await apiFetch(`/api/upcoming?hours=${hours}${showAll}${atParam}`);
+            const data = await apiFetch(`/api/upcoming?hours=${hours}${showAll}${mine}${atParam}`);
             currentSlots = data.slots || [];
             renderGrid();
             updateStatus(data);
@@ -89,7 +115,24 @@
     }
 
     function makeKanbanCard(slot) {
-        const card = el('div', { cls: `kanban-card${slot.has_conflict ? ' has-conflict' : ''}` });
+        const isCompleted = slot.is_completed;
+        const isAssigned  = !!slot.assigned_to;
+        let cls = `kanban-card${slot.has_conflict ? ' has-conflict' : ''}`;
+        if (isCompleted) cls += ' ops-card-completed';
+        else if (isAssigned) cls += ' ops-card-assigned';
+
+        const card = el('div', { cls });
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', `Open details for ${slot.title}`);
+        card.dataset.code      = slot.code;
+        card.dataset.slotIndex = slot.slot_index;
+
+        // Clickable — open modal
+        card.addEventListener('click', () => openModal(slot));
+        card.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(slot); }
+        });
 
         // Track color bar
         const colorBar = el('div', { cls: 'kanban-card-track' });
@@ -97,6 +140,21 @@
         card.appendChild(colorBar);
 
         const body = el('div', { cls: 'kanban-card-body' });
+
+        // Status badge row
+        if (isCompleted || isAssigned) {
+            const statusRow = el('div', { cls: 'kanban-card-status-row' });
+            if (isCompleted) {
+                const badge = el('span', { cls: 'ops-status-badge ops-badge-completed' });
+                badge.textContent = '✔ Completed';
+                statusRow.appendChild(badge);
+            } else {
+                const badge = el('span', { cls: 'ops-status-badge ops-badge-assigned' });
+                badge.textContent = `✋ ${slot.assigned_to}`;
+                statusRow.appendChild(badge);
+            }
+            body.appendChild(statusRow);
+        }
 
         // Time + Room (same row)
         const timeRow = el('div', { cls: 'kanban-time-row' });
@@ -107,11 +165,6 @@
         room.textContent = slot.room_name || '—';
         timeRow.appendChild(room);
         body.appendChild(timeRow);
-
-        // Code - Remove for now, just use code for URLs
-        //const codeEl = el('div', { cls: 'kanban-code' });
-        //codeEl.textContent = slot.code;
-        //body.appendChild(codeEl);
 
         // Title
         const title = el('div', { cls: 'kanban-title' });
@@ -185,6 +238,204 @@
         card.appendChild(body);
         return card;
     }
+
+    // ---------------------------------------------------------------------------
+    // Modal
+    // ---------------------------------------------------------------------------
+
+    function openModal(slot) {
+        activeSlot = slot;
+
+        // Header
+        if (modalTrackBar) modalTrackBar.style.background = slot.track?.color || '#3b82f6';
+        if (modalTime)     modalTime.textContent = fmtTimeRange(slot.start, slot.end);
+        if (modalRoom)     modalRoom.textContent = slot.room_name || '—';
+        if (modalTitle)    modalTitle.textContent = slot.title;
+
+        if (modalSpeakers) {
+            modalSpeakers.textContent = slot.speakers?.length
+                ? slot.speakers.map(s => s.telegram ? `${s.name} (@${s.telegram})` : s.name).join(' · ')
+                : '';
+        }
+
+        // Status + action buttons
+        refreshModalStatus(slot);
+
+        // Resources
+        if (modalResSection && modalResList) {
+            modalResList.textContent = '';
+            if (slot.resources?.length) {
+                modalResSection.classList.remove('hidden');
+                for (const r of slot.resources) {
+                    const item = el('div', { cls: 'ops-modal-resource-item' });
+                    const nameEl = el('span', { cls: 'ops-modal-resource-name' });
+                    nameEl.textContent = r.resource_name;
+                    item.appendChild(nameEl);
+                    if (r.note) {
+                        const noteEl = el('span', { cls: 'ops-modal-resource-note' });
+                        noteEl.textContent = ` (${r.note})`;
+                        item.appendChild(noteEl);
+                    }
+                    const depts = r.department_override
+                        ? [r.department_override]
+                        : (r.resource_departments || []);
+                    const dw = el('span');
+                    dw.style.marginLeft = '8px';
+                    for (const d of depts) dw.appendChild(deptPill(d));
+                    item.appendChild(dw);
+                    modalResList.appendChild(item);
+                }
+            } else {
+                modalResSection.classList.add('hidden');
+            }
+        }
+
+        // Comments
+        if (modalCmtSection && modalCmtList) {
+            modalCmtList.textContent = '';
+            if (slot.comments?.length) {
+                modalCmtSection.classList.remove('hidden');
+                for (const c of slot.comments) {
+                    const item = el('div', { cls: 'ops-modal-comment-item' });
+                    item.appendChild(deptPill(c.department));
+                    const textEl = el('span');
+                    textEl.style.marginLeft = '8px';
+                    textEl.textContent = c.text;
+                    item.appendChild(textEl);
+                    modalCmtList.appendChild(item);
+                }
+            } else {
+                modalCmtSection.classList.add('hidden');
+            }
+        }
+
+        // Conflict
+        if (modalConflict) {
+            modalConflict.classList.toggle('hidden', !slot.has_conflict);
+        }
+
+        // Show modal
+        modalOverlay?.classList.remove('hidden');
+        modalClose?.focus();
+    }
+
+    function closeModal() {
+        modalOverlay?.classList.add('hidden');
+        activeSlot = null;
+    }
+
+    function refreshModalStatus(slot) {
+        if (!modalStatus) return;
+
+        modalStatus.textContent = '';
+        modalStatus.className = 'ops-modal-status';
+
+        if (slot.is_completed) {
+            modalStatus.classList.add('ops-modal-status-completed');
+            const icon = el('span');
+            icon.textContent = '✔ Completed';
+            modalStatus.appendChild(icon);
+        } else if (slot.assigned_to) {
+            modalStatus.classList.add('ops-modal-status-assigned');
+            const icon = el('span');
+            icon.textContent = `✋ Taken by ${slot.assigned_to}`;
+            modalStatus.appendChild(icon);
+        } else {
+            modalStatus.classList.add('ops-modal-status-open');
+            const icon = el('span');
+            icon.textContent = '◯ Not assigned';
+            modalStatus.appendChild(icon);
+        }
+
+        // Update action button states
+        if (btnUnassign) {
+            btnUnassign.disabled = !slot.assigned_to && !slot.is_completed;
+        }
+    }
+
+    function updateSlotState(slot, assigned_to, is_completed) {
+        slot.assigned_to  = assigned_to;
+        slot.is_completed = is_completed;
+
+        // Refresh modal status
+        refreshModalStatus(slot);
+
+        // Refresh the card in the grid
+        const card = kanbanGrid.querySelector(
+            `.kanban-card[data-code="${CSS.escape(slot.code)}"][data-slot-index="${slot.slot_index}"]`
+        );
+        if (card) {
+            const newCard = makeKanbanCard(slot);
+            card.replaceWith(newCard);
+        }
+    }
+
+    // Modal action buttons
+    btnTake?.addEventListener('click', async () => {
+        if (!activeSlot) return;
+        setActionBusy(true);
+        try {
+            const res = await apiFetch(
+                `/api/slots/${encodeURIComponent(activeSlot.code)}/${activeSlot.slot_index}/take`,
+                { method: 'POST' }
+            );
+            updateSlotState(activeSlot, res.assigned_to, res.is_completed);
+            showToast('Event taken — you are now assigned.', 'success');
+        } catch (e) {
+            showToast('Failed to take event: ' + e.message, 'error');
+        } finally {
+            setActionBusy(false);
+        }
+    });
+
+    btnComplete?.addEventListener('click', async () => {
+        if (!activeSlot) return;
+        setActionBusy(true);
+        try {
+            const res = await apiFetch(
+                `/api/slots/${encodeURIComponent(activeSlot.code)}/${activeSlot.slot_index}/complete`,
+                { method: 'POST' }
+            );
+            updateSlotState(activeSlot, res.assigned_to, res.is_completed);
+            showToast('Event marked as completed.', 'success');
+        } catch (e) {
+            showToast('Failed to complete event: ' + e.message, 'error');
+        } finally {
+            setActionBusy(false);
+        }
+    });
+
+    btnUnassign?.addEventListener('click', async () => {
+        if (!activeSlot) return;
+        setActionBusy(true);
+        try {
+            const res = await apiFetch(
+                `/api/slots/${encodeURIComponent(activeSlot.code)}/${activeSlot.slot_index}/unassign`,
+                { method: 'POST' }
+            );
+            updateSlotState(activeSlot, res.assigned_to, res.is_completed);
+            showToast('Event unassigned.', 'success');
+        } catch (e) {
+            showToast('Failed to unassign event: ' + e.message, 'error');
+        } finally {
+            setActionBusy(false);
+        }
+    });
+
+    function setActionBusy(busy) {
+        [btnTake, btnComplete, btnUnassign].forEach(b => {
+            if (b) b.disabled = busy;
+        });
+    }
+
+    // Close modal on overlay click / Escape
+    modalOverlay?.addEventListener('click', e => {
+        if (e.target === modalOverlay) closeModal();
+    });
+    modalClose?.addEventListener('click', closeModal);
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && activeSlot) closeModal();
+    });
 
     // ---------------------------------------------------------------------------
     // Status bar
@@ -327,6 +578,10 @@
     });
 
     showAllCheck?.addEventListener('change', () => {
+        loadUpcoming();
+    });
+
+    showMineCheck?.addEventListener('change', () => {
         loadUpcoming();
     });
 

@@ -597,6 +597,20 @@ def api_upcoming():
             "has_conflict":    code in conflict_codes,
         })
 
+    # Enrich with operation_events state (bulk query)
+    codes_in_result = list({s["code"] for s in result})
+    op_events = db.get_operation_events_for_codes(codes_in_result)
+    for s in result:
+        ev = op_events.get((s["code"], s["slot_index"]))
+        s["assigned_to"]  = ev["assigned_to"]  if ev else None
+        s["is_completed"] = bool(ev["is_completed"]) if ev else False
+
+    # ?mine=1 — filter to slots assigned to the current user
+    mine = request.args.get("mine") == "1"
+    if mine:
+        user_email = g.user.get("email", "") if g.user else ""
+        result = [s for s in result if s.get("assigned_to") == user_email]
+
     result.sort(key=lambda x: x["start"])
     return jsonify({
         "slots":          result,
@@ -604,6 +618,35 @@ def api_upcoming():
         "reference_time": now.isoformat(),
         "is_test_mode":   bool(at_str),
     })
+
+
+# ---------------------------------------------------------------------------
+# API — Operation event actions (take / complete / unassign)
+# ---------------------------------------------------------------------------
+
+@app.route(f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/take", methods=["POST"])
+@auth.require_write
+def api_slot_take(code, slot_index):
+    """Assign this slot to the current user."""
+    db.take_operation_event(code, slot_index, g.user.get("email"))
+    return jsonify({"ok": True, "assigned_to": g.user.get("email"), "is_completed": False})
+
+
+@app.route(f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/complete", methods=["POST"])
+@auth.require_write
+def api_slot_complete(code, slot_index):
+    """Mark this slot as completed."""
+    db.complete_operation_event(code, slot_index, g.user.get("email"))
+    ev = db.get_operation_event(code, slot_index)
+    return jsonify({"ok": True, "assigned_to": ev["assigned_to"] if ev else None, "is_completed": True})
+
+
+@app.route(f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/unassign", methods=["POST"])
+@auth.require_write
+def api_slot_unassign(code, slot_index):
+    """Remove the assignee and reset completion for this slot."""
+    db.unassign_operation_event(code, slot_index, g.user.get("email"))
+    return jsonify({"ok": True, "assigned_to": None, "is_completed": False})
 
 
 # ---------------------------------------------------------------------------

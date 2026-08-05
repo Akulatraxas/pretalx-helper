@@ -14,7 +14,7 @@ When you add a new column or table:
 
 from sqlalchemy import (
     MetaData, Table, Column,
-    Integer, Text, ForeignKey, Index,
+    Integer, Text, ForeignKey, Index, Boolean,
 )
 
 # Naming conventions let Alembic generate stable constraint names for batch
@@ -85,3 +85,18 @@ audit_log = Table(
 
 Index("idx_sub_resources_code", submission_resources.c.submission_code)
 Index("idx_sub_comments_code",  submission_comments.c.submission_code)
+
+# Tracks per-slot operational state (taken by / completed) for the Operations tab.
+# Keyed by (submission_code, slot_index) — one row per slot per submission.
+operation_events = Table(
+    "operation_events", metadata,
+    Column("id",               Integer, primary_key=True, autoincrement=True),
+    Column("submission_code",  Text,    nullable=False),
+    Column("slot_index",       Integer, nullable=False, server_default="0"),
+    Column("assigned_to",      Text,    nullable=True),   # email of the conops member who took it
+    Column("is_completed",     Boolean, nullable=False, server_default="0"),
+    Column("updated_at",       Text,    nullable=False,
+           server_default="(datetime('now'))"),
+)
+
+Index("idx_op_events_code", operation_events.c.submission_code)

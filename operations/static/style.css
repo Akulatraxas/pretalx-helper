@@ -2399,14 +2399,24 @@ ul {
    OPERATIONS — CARD STATUS STATES
    ============================================================ */
 
+/* Taken: EF-green diagonal stripe background, no dimming */
 .kanban-card.ops-card-assigned {
-    border-color: var(--accent-teal);
-    box-shadow: 0 0 0 1px var(--accent-teal);
+    background-image: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 6px,
+        rgba(0, 89, 83, 0.07) 6px,
+        rgba(0, 89, 83, 0.07) 12px
+    );
+    border-color: rgba(0, 89, 83, 0.28);
 }
 
+/* Completed: dim the whole card.
+   Cannot use `opacity` here — the fadeIn animation uses `forwards` fill which
+   permanently sets opacity:1 and wins the cascade. `filter: opacity()` is not
+   touched by the animation so it applies correctly. */
 .kanban-card.ops-card-completed {
-    opacity: 0.6;
-    border-color: var(--border-subtle);
+    filter: opacity(0.4);
 }
 
 .kanban-card-status-row {

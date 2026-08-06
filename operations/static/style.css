@@ -3,7 +3,7 @@
    Light theme — EF CI colours (EF-Green #005953)
    ============================================================ */
 
-/* --- Self-hosted fonts (copied from web/static/fonts/) --- */
+/* --- Self-hosted fonts --- */
 @font-face {
     font-family: 'Inter';
     src: url('fonts/inter-400.woff2') format('woff2');
@@ -1910,8 +1910,9 @@ ul {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    /* No overflow: hidden here — that was clipping card body content.
+    /* No overflow-x: hidden here — that was clipping card body content.
        The track bar handles its own top radius instead. */
+    overflow-y: hidden;
     transition: transform var(--transition-base), box-shadow var(--transition-base);
     animation: fadeIn var(--transition-base) forwards;
 }

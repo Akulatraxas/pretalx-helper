@@ -1,0 +1,176 @@
+/* ============================================================
+   Output Page — Department Tables & CSV Export
+   ============================================================ */
+
+.page-output {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.page-output .page-header {
+    flex-shrink: 0;
+}
+
+.dept-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+    overflow-x: auto;
+}
+
+.dept-tab {
+    padding: 6px 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dept-tab:hover {
+    background: var(--accent-primary-light);
+    color: var(--text-primary);
+}
+
+.dept-tab.active {
+    background: rgba(0, 89, 83, 0.10);
+    border-color: rgba(0, 89, 83, 0.35);
+    color: var(--accent-primary);
+}
+
+.page-output .table-container {
+    flex: 1;
+    overflow: auto;
+    padding: 0 0 24px;
+}
+
+.output-table th,
+.output-table td {
+    padding: 9px 14px;
+}
+
+.col-day {
+    min-width: 120px;
+}
+
+.col-time {
+    min-width: 110px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.col-room {
+    min-width: 100px;
+}
+
+.col-code {
+    min-width: 80px;
+    font-family: monospace;
+    font-size: 0.78rem;
+}
+
+.col-title {
+    min-width: 200px;
+}
+
+.col-speakers {
+    min-width: 140px;
+}
+
+.col-resources {
+    min-width: 200px;
+}
+
+.col-comments {
+    min-width: 200px;
+}
+
+.output-resource-list,
+.output-comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.output-resource-item,
+.output-comment-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    font-size: 0.8rem;
+}
+
+.output-resource-item .resource-name {
+    font-weight: 500;
+}
+
+.output-resource-item .resource-note {
+    color: var(--text-muted);
+}
+
+.output-conflict-flag {
+    font-size: 0.68rem;
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+    background: rgba(220, 38, 38, 0.10);
+    color: var(--accent-red);
+    font-weight: 600;
+}
+
+.output-footer {
+    padding: 8px 24px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.speaker-telegram-small {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+/* Responsive Output Page */
+@media (max-width: 640px) {
+    .page-output .page-header {
+        padding: 10px 12px 8px;
+        gap: 8px;
+    }
+    .page-output .page-header .page-title {
+        font-size: 1.1rem;
+    }
+    .page-output .page-header .page-subtitle {
+        display: none;
+    }
+    .dept-tabs {
+        padding: 6px 12px;
+        gap: 3px;
+    }
+    .dept-tab {
+        padding: 4px 10px;
+        font-size: 0.78rem;
+    }
+    .resource-filter-bar {
+        padding: 5px 12px;
+        gap: 6px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+    .resource-filter-label {
+        display: none;
+    }
+    .resource-filter-chips {
+        flex-wrap: nowrap;
+    }
+}

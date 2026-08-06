@@ -14,7 +14,7 @@ When you add a new column or table:
 
 from sqlalchemy import (
     MetaData, Table, Column,
-    Integer, Text, ForeignKey, Index, Boolean,
+    Integer, Text, ForeignKey, Index, Boolean, UniqueConstraint,
 )
 
 # Naming conventions let Alembic generate stable constraint names for batch
@@ -100,3 +100,19 @@ operation_events = Table(
 )
 
 Index("idx_op_events_code", operation_events.c.submission_code)
+
+# Tracks per-slot occupancy rating (Empty/Low/Medium/High/Full) for the Occupancy tab.
+# Keyed by (submission_code, slot_index) — one row per slot, newer rating overwrites.
+slot_occupancy = Table(
+    "slot_occupancy", metadata,
+    Column("id",               Integer, primary_key=True, autoincrement=True),
+    Column("submission_code",  Text,    nullable=False),
+    Column("slot_index",       Integer, nullable=False, server_default="0"),
+    Column("rating",           Text,    nullable=False),   # Empty|Low|Medium|High|Full
+    Column("rated_by",         Text,    nullable=True),    # email of the rater
+    Column("updated_at",       Text,    nullable=False,
+           server_default="(datetime('now'))"),
+    UniqueConstraint("submission_code", "slot_index", name="uq_slot_occupancy_code_slot"),
+)
+
+Index("idx_slot_occupancy_code", slot_occupancy.c.submission_code)

@@ -1,0 +1,613 @@
+/* ============================================================
+   Operations Page — Upcoming Feed, Kanban Print Cards & Slot Action Modal
+   ============================================================ */
+
+.page-operations {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.page-operations .page-header {
+    flex-shrink: 0;
+}
+
+.ops-controls {
+    flex-wrap: wrap;
+}
+
+.ops-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 24px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.kanban-grid {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+    grid-auto-rows: min-content;
+    gap: 16px;
+    align-content: start;
+}
+
+.kanban-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow-y: hidden;
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+    animation: fadeIn var(--transition-base) forwards;
+}
+
+.kanban-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.kanban-card.has-conflict {
+    border-color: rgba(220, 38, 38, 0.35);
+}
+
+.kanban-card-track {
+    height: 4px;
+    background: var(--accent-primary);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.kanban-card-body {
+    padding: 14px 16px;
+}
+
+.kanban-time-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.kanban-time {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--accent-amber);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.kanban-room {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.kanban-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.kanban-code {
+    font-size: 0.68rem;
+    font-family: monospace;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.kanban-speakers {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.kanban-resources,
+.kanban-comments {
+    font-size: 0.78rem;
+    margin-top: 8px;
+}
+
+.kanban-section-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.kanban-resource-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+    color: var(--text-secondary);
+}
+
+.kanban-resource-note {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+
+.kanban-comment-item {
+    padding: 3px 0;
+    color: var(--text-secondary);
+    border-left: 2px solid var(--border-medium);
+    padding-left: 8px;
+    margin-bottom: 4px;
+}
+
+.test-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(180, 83, 9, 0.10);
+    border: 1px solid rgba(180, 83, 9, 0.30);
+    color: var(--accent-amber);
+    font-size: 0.75rem;
+    font-weight: 600;
+    animation: pulse 2s infinite;
+}
+
+.ops-test-at {
+    width: 190px;
+    flex-shrink: 0;
+    color-scheme: light;
+}
+
+.ops-placeholder,
+.ops-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+}
+
+/* Card status states */
+.kanban-card.ops-card-assigned {
+    background-image: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 6px,
+        rgba(0, 89, 83, 0.07) 6px,
+        rgba(0, 89, 83, 0.07) 12px
+    );
+    border-color: rgba(0, 89, 83, 0.28);
+}
+
+.kanban-card.ops-card-completed {
+    filter: opacity(0.4);
+}
+
+.kanban-card-status-row {
+    margin-bottom: 6px;
+}
+
+.ops-status-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+}
+
+.ops-badge-assigned {
+    background: rgba(20, 184, 166, 0.15);
+    color: var(--accent-teal);
+    border: 1px solid rgba(20, 184, 166, 0.35);
+}
+
+.ops-badge-completed {
+    background: rgba(100, 100, 120, 0.15);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+}
+
+/* Event detail modal */
+.ops-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 10, 20, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+    animation: fadeIn var(--transition-base) forwards;
+}
+
+.ops-modal-overlay.hidden {
+    display: none;
+}
+
+.ops-modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 600px;
+    max-width: calc(100vw - 48px);
+    max-height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    animation: slideUp var(--transition-slow) forwards;
+    overflow: hidden;
+}
+
+.ops-modal-header {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+    position: relative;
+}
+
+.ops-modal-track-bar {
+    width: 4px;
+    border-radius: 2px;
+    align-self: stretch;
+    flex-shrink: 0;
+    min-height: 40px;
+    margin-top: 16px;
+}
+
+.ops-modal-header-content {
+    flex: 1;
+    min-width: 0;
+    padding-top: 16px;
+}
+
+.ops-modal-time-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.ops-modal-time {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent-teal);
+    font-variant-numeric: tabular-nums;
+}
+
+.ops-modal-room {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    padding: 1px 7px;
+    border-radius: var(--radius-sm);
+}
+
+.ops-modal-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 5px;
+    line-height: 1.3;
+}
+
+.ops-modal-speakers {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.ops-modal-close {
+    flex-shrink: 0;
+    margin-top: 12px;
+    font-size: 1rem;
+    opacity: 0.6;
+    transition: opacity var(--transition-base);
+}
+
+.ops-modal-close:hover {
+    opacity: 1;
+}
+
+.ops-modal-body {
+    overflow-y: auto;
+    padding: 18px 20px 24px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ops-modal-status {
+    padding: 9px 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.ops-modal-status-open {
+    background: rgba(100, 100, 130, 0.12);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+}
+
+.ops-modal-status-assigned {
+    background: rgba(20, 184, 166, 0.1);
+    color: var(--accent-teal);
+    border: 1px solid rgba(20, 184, 166, 0.3);
+}
+
+.ops-modal-status-completed {
+    background: rgba(100, 150, 100, 0.1);
+    color: #86efac;
+    border: 1px solid rgba(100, 200, 100, 0.25);
+}
+
+.ops-modal-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ops-btn-danger {
+    color: var(--accent-red);
+}
+
+.ops-btn-danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--accent-red);
+}
+
+.ops-modal-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ops-modal-section.hidden {
+    display: none;
+}
+
+.ops-modal-section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.ops-modal-resource-item {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 10px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+}
+
+.ops-modal-resource-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.ops-modal-resource-note {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.ops-modal-comment-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.ops-modal-conflict {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent-amber);
+    padding: 8px 12px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: var(--radius-sm);
+}
+
+.ops-modal-conflict.hidden {
+    display: none;
+}
+
+/* Responsive Operations Page */
+@media (max-width: 640px) {
+    .ops-controls {
+        width: 100%;
+        gap: 6px;
+    }
+    .ops-controls .form-label-inline {
+        display: none;
+    }
+    .ops-test-at {
+        width: 100%;
+    }
+    .kanban-grid {
+        padding: 12px 12px;
+        gap: 12px;
+        grid-template-columns: 1fr;
+    }
+    .ops-status-bar {
+        padding: 6px 12px;
+        flex-wrap: wrap;
+    }
+}
+
+/* Print Styles (Kanban cards) */
+@media print {
+    body {
+        background: #fff !important;
+        color: #111 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .main-content {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .page-operations {
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
+    }
+
+    .app-header,
+    .page-header,
+    .ops-status-bar,
+    .ops-controls,
+    .kanban-grid,
+    #toast-container {
+        display: none !important;
+    }
+
+    .print-area {
+        display: block !important;
+        padding: 0 !important;
+    }
+
+    .print-header {
+        text-align: center;
+        padding: 16px;
+        border-bottom: 2px solid #ddd;
+        margin-bottom: 20px;
+    }
+
+    .print-title {
+        font-size: 1.1rem;
+        color: #111;
+    }
+
+    .print-meta {
+        font-size: 0.75rem;
+        color: #555;
+        margin-top: 4px;
+    }
+
+    .print-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-auto-rows: min-content;
+        gap: 16px;
+        padding: 0 8px;
+    }
+
+    .print-card {
+        border: 1.5px solid #bbb;
+        border-radius: 8px;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .print-card-track-bar {
+        height: 5px;
+        background: #005953;
+        border-radius: 6px 6px 0 0;
+    }
+
+    .print-card-body {
+        padding: 12px;
+    }
+
+    .print-card-time-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 3px;
+    }
+
+    .print-card-time {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #b45309;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .print-card-room {
+        font-size: 0.72rem;
+        color: #555;
+    }
+
+    .print-card-code {
+        font-size: 0.65rem;
+        color: #888;
+        font-family: monospace;
+    }
+
+    .print-card-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 4px 0;
+        color: #111;
+    }
+
+    .print-card-speakers {
+        font-size: 0.78rem;
+        color: #444;
+        margin-bottom: 8px;
+    }
+
+    .print-card-section-label {
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: #888;
+        margin: 8px 0 3px;
+        border-top: 1px solid #eee;
+        padding-top: 6px;
+    }
+
+    .print-card-resource {
+        font-size: 0.78rem;
+        color: #111;
+        padding: 2px 0;
+    }
+
+    .print-card-note {
+        color: #666;
+    }
+
+    .print-card-comment {
+        font-size: 0.75rem;
+        color: #333;
+        border-left: 2px solid #ddd;
+        padding-left: 6px;
+        margin: 3px 0;
+    }
+
+    .print-card-conflict {
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: #dc2626;
+    }
+}

@@ -125,6 +125,12 @@ def page_output():
 def page_operations():
     return render_template("operations.html", page="operations")
 
+
+@app.route(f"{BASE_PATH}/occupancy")
+@auth.require_read
+def page_occupancy():
+    return render_template("occupancy.html", page="occupancy")
+
 # ---------------------------------------------------------------------------
 # API — Health & debug
 # ---------------------------------------------------------------------------
@@ -647,6 +653,149 @@ def api_slot_unassign(code, slot_index):
     """Remove the assignee and reset completion for this slot."""
     db.unassign_operation_event(code, slot_index, g.user.get("email"))
     return jsonify({"ok": True, "assigned_to": None, "is_completed": False})
+
+
+# ---------------------------------------------------------------------------
+# API — Occupancy feed + rating
+# ---------------------------------------------------------------------------
+
+@app.route(f"{BASE_PATH}/api/occupancy")
+@auth.require_read
+def api_occupancy():
+    """
+    Return submissions whose slots are currently running OR start within the
+    next 1 hour, with their current occupancy rating (if any).
+
+    Query params:
+      ?at=YYYY-MM-DDTHH:MM   — override reference time (test mode)
+      ?rooms=Room1,Room2     — comma-separated room name filter
+      ?show_rated=1          — include already-rated slots (default 0)
+    """
+    from datetime import datetime, timezone, timedelta
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    cache = pretalx_cache.get_cache()
+    if cache is None:
+        return jsonify({"error": "Cache not ready"}), 503
+
+    # Resolve the event’s local timezone
+    try:
+        event_tz = ZoneInfo(EVENT_TIMEZONE)
+    except ZoneInfoNotFoundError:
+        event_tz = timezone.utc
+
+    # ?at= override for test mode
+    at_str = (request.args.get("at") or "").strip()
+    if at_str:
+        try:
+            now = datetime.fromisoformat(at_str)
+            if now.tzinfo is None:
+                now = now.replace(tzinfo=event_tz)
+        except ValueError:
+            now = datetime.now(tz=event_tz)
+    else:
+        now = datetime.now(tz=event_tz)
+
+    # Window: currently running OR starting within the next 1 hour
+    window_end = now + timedelta(hours=1)
+
+    # Room filter
+    rooms_raw = (request.args.get("rooms") or "").strip()
+    room_filter = {r.strip() for r in rooms_raw.split(",") if r.strip()} if rooms_raw else None
+
+    show_rated = request.args.get("show_rated") == "1"
+
+    result = []
+    for slot in cache["slots_flat"]:
+        code  = slot["submission_code"]
+        start_raw = slot.get("start", "")
+        end_raw   = slot.get("end", "")
+        if not start_raw:
+            continue
+
+        try:
+            slot_start = datetime.fromisoformat(start_raw)
+            if slot_start.tzinfo is None:
+                slot_start = slot_start.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+
+        try:
+            slot_end = datetime.fromisoformat(end_raw) if end_raw else slot_start
+            if slot_end.tzinfo is None:
+                slot_end = slot_end.replace(tzinfo=timezone.utc)
+        except ValueError:
+            slot_end = slot_start
+
+        # Include: currently running (started ≤ now ≤ ended) OR starting ≤ window_end
+        is_running = slot_start <= now <= slot_end
+        starting_soon = now <= slot_start <= window_end
+        if not (is_running or starting_soon):
+            continue
+
+        # Room filter
+        room_name = slot.get("room_name", "")
+        if room_filter and room_name not in room_filter:
+            continue
+
+        sub = cache["submissions_map"].get(code)
+        if not sub:
+            continue
+
+        result.append({
+            "code":            code,
+            "title":           sub["title"],
+            "track":           sub["track"],
+            "submission_type": sub["submission_type"],
+            "speakers":        sub["speakers"],
+            "slot_index":      slot.get("slot_index", 0),
+            "start":           start_raw,
+            "end":             end_raw,
+            "room_name":       room_name,
+            "is_running":      is_running,
+        })
+
+    # Enrich with occupancy ratings (bulk query)
+    codes_in_result = list({s["code"] for s in result})
+    occupancy_map = db.get_occupancy_for_codes(codes_in_result)
+    for s in result:
+        occ = occupancy_map.get((s["code"], s["slot_index"]))
+        s["rating"]     = occ["rating"]     if occ else None
+        s["rated_by"]   = occ["rated_by"]   if occ else None
+        s["rated_at"]   = occ["updated_at"] if occ else None
+
+    # Filter out already-rated unless show_rated=1
+    if not show_rated:
+        result = [s for s in result if s["rating"] is None]
+
+    # Collect all unique room names from ALL current+soon slots (for filter dropdown)
+    all_rooms = sorted({
+        sl.get("room_name", "") for sl in cache["slots_flat"]
+        if sl.get("room_name")
+    })
+
+    result.sort(key=lambda x: (x["room_name"], x["start"]))
+    return jsonify({
+        "slots":          result,
+        "reference_time": now.isoformat(),
+        "is_test_mode":   bool(at_str),
+        "all_rooms":      all_rooms,
+        "ratings":        db.OCCUPANCY_RATINGS,
+    })
+
+
+@app.route(f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/rate", methods=["POST"])
+@auth.require_write
+def api_slot_rate(code, slot_index):
+    """Set (or update) the occupancy rating for a slot."""
+    data   = request.get_json(force=True) or {}
+    rating = (data.get("rating") or "").strip()
+    if rating not in db.OCCUPANCY_RATINGS:
+        return jsonify({"error": f"rating must be one of {db.OCCUPANCY_RATINGS}"}), 400
+
+    db.upsert_occupancy(code, slot_index, rating, user_email=g.user.get("email"))
+    return jsonify({"ok": True, "rating": rating})
+
 
 
 # ---------------------------------------------------------------------------

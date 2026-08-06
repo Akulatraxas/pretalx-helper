@@ -491,3 +491,55 @@ def unassign_operation_event(submission_code, slot_index, user_email):
         _upsert_operation_event(conn, submission_code, slot_index, None, False)
         _audit(conn, user_email, "unassign_event",
                f"code={submission_code} slot={slot_index}")
+
+
+# ---------------------------------------------------------------------------
+# Slot occupancy ratings (Empty / Low / Medium / High / Full)
+# ---------------------------------------------------------------------------
+
+OCCUPANCY_RATINGS = ["Empty", "Low", "Medium", "High", "Full"]
+
+
+def get_occupancy_for_codes(codes):
+    """
+    Return a dict keyed by (submission_code, slot_index) for all matching codes.
+    Used to annotate the occupancy feed in bulk.
+    """
+    if not codes:
+        return {}
+    placeholders = ", ".join(f":c{i}" for i in range(len(codes)))
+    params = {f"c{i}": c for i, c in enumerate(codes)}
+    with engine.connect() as conn:
+        rows = conn.execute(text(f"""
+            SELECT submission_code, slot_index, rating, rated_by, updated_at
+            FROM slot_occupancy
+            WHERE submission_code IN ({placeholders})
+        """), params).fetchall()
+    result = {}
+    for row in rows:
+        r = _to_dict(row)
+        result[(r["submission_code"], r["slot_index"])] = r
+    return result
+
+
+def upsert_occupancy(submission_code, slot_index, rating, user_email=None):
+    """Insert or update the occupancy rating for a slot."""
+    if rating not in OCCUPANCY_RATINGS:
+        raise ValueError(f"Invalid rating {rating!r}; must be one of {OCCUPANCY_RATINGS}")
+    with engine.begin() as conn:
+        conn.execute(text("""
+            INSERT INTO slot_occupancy (submission_code, slot_index, rating, rated_by, updated_at)
+            VALUES (:code, :idx, :rating, :rated_by, datetime('now'))
+            ON CONFLICT(submission_code, slot_index) DO UPDATE SET
+                rating     = excluded.rating,
+                rated_by   = excluded.rated_by,
+                updated_at = excluded.updated_at
+        """), {
+            "code":     submission_code,
+            "idx":      slot_index,
+            "rating":   rating,
+            "rated_by": user_email or None,
+        })
+        _audit(conn, user_email, "rate_occupancy",
+               f"code={submission_code} slot={slot_index} rating={rating}")
+

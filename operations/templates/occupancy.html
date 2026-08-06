@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Occupancy{% endblock %}
+
+{% block content %}
+<div class="page-occupancy">
+
+    <div class="page-header occ-page-header">
+        <div>
+            <h1 class="page-title">Room Occupancy</h1>
+            <p class="page-subtitle">Rate how full rooms are — current &amp; events starting within 1 hour</p>
+        </div>
+        <div class="header-actions occ-controls">
+
+            <!-- Room filter: single-select dropdown, populated from API -->
+            <select class="form-select form-select-sm" id="occ-room-select" aria-label="Filter by room">
+                <option value="">All Rooms</option>
+            </select>
+
+            <!-- Show rated checkbox -->
+            <label class="filter-toggle" title="Also show events that have already been rated">
+                <input type="checkbox" id="occ-show-rated"> Show Rated
+            </label>
+
+            <!-- Test mode -->
+            <label class="filter-toggle" title="Override reference time for testing">
+                <input type="checkbox" id="occ-test-mode"> 🧪 Test
+            </label>
+            <input class="form-input form-input-sm hidden" type="datetime-local"
+                   id="occ-test-at" title="Reference 'now' for test mode" aria-label="Test reference time"
+                   style="max-width:180px">
+
+            <button class="btn btn-ghost btn-sm" id="occ-refresh-btn" title="Refresh">↻ Refresh</button>
+        </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="ops-status-bar" id="occ-status-bar">
+        <span id="occ-count-label">Loading…</span>
+        <span class="status-dot loading" id="occ-live-dot" title="Auto-refreshes every 30 seconds"></span>
+        <span class="occ-test-badge hidden" id="occ-test-badge">🧪 Test mode active</span>
+    </div>
+
+    <!-- Event cards -->
+    <div class="occ-grid" id="occ-grid">
+        <div class="occ-placeholder" id="occ-placeholder">
+            <div class="loading-spinner"></div>
+            Fetching events…
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ base_path }}/static/js/occupancy.js"></script>
+{% endblock %}

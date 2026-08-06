@@ -418,67 +418,237 @@
 }
 
 /* ============================================================
-   RESOURCE FILTER BAR
+   FILTERS BAR & DROPDOWNS
    ============================================================ */
 
-.resource-filter-bar {
+.filters-bar {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 8px 24px;
     border-bottom: 1px solid var(--border-subtle);
     flex-shrink: 0;
-    flex-wrap: wrap;
     background: var(--bg-surface);
+    position: relative;
+    z-index: 20;
 }
 
-.resource-filter-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-}
-
-.resource-filter-chips {
+.search-box {
     display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
     flex: 1;
+    max-width: 340px;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.resource-filter-chip {
-    padding: 3px 10px;
-    border-radius: var(--radius-full);
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: var(--text-secondary);
+.search-box:focus-within {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(0, 89, 83, 0.12);
+}
+
+.search-box svg {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.search-box input {
+    border: none;
+    background: none;
+    outline: none;
+    font-size: 0.82rem;
+    width: 100%;
+    color: var(--text-primary);
+}
+
+.search-box input::placeholder {
+    color: var(--text-muted);
+}
+
+.filter-dropdowns {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.filter-dropdown {
+    position: relative;
+}
+
+.filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
     background: var(--bg-card);
     border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: background var(--transition-fast), color var(--transition-fast),
-        border-color var(--transition-fast), box-shadow var(--transition-fast);
+    transition: all var(--transition-fast);
     white-space: nowrap;
 }
 
-.resource-filter-chip:hover {
+.filter-btn:hover {
     background: var(--bg-card-hover);
     color: var(--text-primary);
     border-color: var(--border-strong);
 }
 
-.resource-filter-chip.active {
-    background: rgba(0, 89, 83, 0.10);
+.filter-btn.has-selection {
     border-color: rgba(0, 89, 83, 0.40);
     color: var(--accent-primary);
-    box-shadow: 0 0 0 2px rgba(0, 89, 83, 0.08);
+    background: rgba(0, 89, 83, 0.10);
+    font-weight: 600;
 }
 
-.resource-filter-loading,
-.resource-filter-empty {
+.dropdown-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 220px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    display: none;
+    z-index: 300;
+}
+
+.dropdown-panel.open {
+    display: block;
+    animation: dropdownIn 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    margin-bottom: 4px;
+    background: var(--bg-base);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+}
+
+.dropdown-search input {
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 0.78rem;
+    width: 100%;
+    color: var(--text-primary);
+}
+
+.dropdown-search input::placeholder {
+    color: var(--text-muted);
+}
+
+.dropdown-bulk-actions {
+    display: flex;
+    gap: 4px;
+    padding: 4px 4px 6px;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 4px;
+}
+
+.dropdown-bulk-btn {
+    flex: 1;
+    background: none;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    padding: 3px 6px;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+    text-align: center;
+}
+
+.dropdown-bulk-btn:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    border-color: var(--border-medium);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    user-select: none;
+}
+
+.dropdown-item:hover {
+    background: var(--accent-primary-light);
+    color: var(--text-primary);
+}
+
+.dropdown-item .checkbox {
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all var(--transition-fast);
+    background: var(--bg-surface);
+}
+
+.dropdown-item.selected .checkbox {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.dropdown-item.selected .checkbox::after {
+    content: '';
+    width: 7px;
+    height: 4px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg);
+    margin-top: -1px;
+}
+
+.dropdown-item .item-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dropdown-placeholder {
+    padding: 10px;
     font-size: 0.78rem;
     color: var(--text-muted);
+    text-align: center;
 }
 
 /* ============================================================

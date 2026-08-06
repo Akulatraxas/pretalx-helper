@@ -161,16 +161,16 @@
         padding: 4px 10px;
         font-size: 0.78rem;
     }
-    .resource-filter-bar {
-        padding: 5px 12px;
+    .filters-bar {
+        padding: 6px 12px;
         gap: 6px;
-        flex-wrap: nowrap;
-        overflow-x: auto;
+        flex-wrap: wrap;
     }
-    .resource-filter-label {
-        display: none;
+    .search-box {
+        max-width: none;
+        width: 100%;
     }
-    .resource-filter-chips {
-        flex-wrap: nowrap;
+    .filter-dropdowns {
+        flex: 1;
     }
 }

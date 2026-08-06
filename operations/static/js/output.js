@@ -1,5 +1,5 @@
 /**
- * output.js — Output page: department tabs, table rendering, CSV export.
+ * output.js — Output page: department tabs, table rendering, search & dropdown filters, CSV export.
  */
 
 (function () {
@@ -7,7 +7,12 @@
 
     let currentDept = 'all';
     let currentRows = [];
-    let selectedResourceIds = new Set();  // IDs of resources selected in the filter
+    let allResources = [];
+    let availableRooms = [];
+
+    let selectedResourceIds = new Set();
+    let selectedRoomNames = new Set();
+    let searchQuery = '';
 
     const tabs = document.querySelectorAll('.dept-tab');
     const tbody = document.getElementById('output-tbody');
@@ -15,8 +20,13 @@
     const emptyEl = document.getElementById('output-empty');
     const footerEl = document.getElementById('output-footer');
     const exportBtn = document.getElementById('btn-export-csv');
-    const filterChipsEl = document.getElementById('resource-filter-chips');
-    const filterClearBtn = document.getElementById('resource-filter-clear');
+
+    const searchInput = document.getElementById('output-filter-search');
+    const btnFilterResources = document.getElementById('btn-filter-resources');
+    const dropdownResources = document.getElementById('dropdown-resources');
+    const btnFilterRooms = document.getElementById('btn-filter-rooms');
+    const dropdownRooms = document.getElementById('dropdown-rooms');
+    const btnClearFilters = document.getElementById('btn-clear-filters');
 
     // ---------------------------------------------------------------------------
     // Load output data
@@ -27,6 +37,7 @@
         try {
             const data = await apiFetch(`/api/output?dept=${encodeURIComponent(dept)}`);
             currentRows = data.rows || [];
+            updateAvailableRooms();
             renderTable();
             updateFooter();
         } catch (e) {
@@ -35,78 +46,292 @@
     }
 
     // ---------------------------------------------------------------------------
-    // Resource filter
+    // Filters logic & Dropdowns
     // ---------------------------------------------------------------------------
 
     async function loadResourceFilter() {
-        if (!filterChipsEl) return;
         try {
             const data = await apiFetch('/api/resources');
-            const resources = (data.resources || []).sort((a, b) => a.name.localeCompare(b.name));
-            filterChipsEl.innerHTML = '';
-            if (resources.length === 0) {
-                const note = el('span', { cls: 'resource-filter-empty' });
-                note.textContent = 'No resources defined';
-                filterChipsEl.appendChild(note);
-                return;
-            }
-            for (const res of resources) {
-                const chip = el('button', {
-                    cls: 'resource-filter-chip',
-                    type: 'button',
-                    'aria-pressed': 'false',
-                    'data-resource-id': String(res.id),
-                    id: `res-chip-${res.id}`,
-                });
-                chip.textContent = res.name;
-                chip.addEventListener('click', () => toggleResourceFilter(res.id, chip));
-                filterChipsEl.appendChild(chip);
-            }
+            allResources = (data.resources || []).sort((a, b) => a.name.localeCompare(b.name));
+            renderResourceDropdown();
         } catch (e) {
-            if (filterChipsEl) filterChipsEl.innerHTML = '';
+            allResources = [];
+            renderResourceDropdown();
         }
     }
 
-    function toggleResourceFilter(resourceId, chipEl) {
-        if (selectedResourceIds.has(resourceId)) {
-            selectedResourceIds.delete(resourceId);
-            chipEl.classList.remove('active');
-            chipEl.setAttribute('aria-pressed', 'false');
-        } else {
-            selectedResourceIds.add(resourceId);
-            chipEl.classList.add('active');
-            chipEl.setAttribute('aria-pressed', 'true');
-        }
-        updateFilterClearBtn();
-        renderTable();
-        updateFooter();
-    }
-
-    function updateFilterClearBtn() {
-        if (!filterClearBtn) return;
-        if (selectedResourceIds.size > 0) {
-            filterClearBtn.classList.remove('hidden');
-        } else {
-            filterClearBtn.classList.add('hidden');
-        }
-    }
-
-    filterClearBtn && filterClearBtn.addEventListener('click', () => {
-        selectedResourceIds.clear();
-        filterChipsEl && filterChipsEl.querySelectorAll('.resource-filter-chip').forEach(chip => {
-            chip.classList.remove('active');
-            chip.setAttribute('aria-pressed', 'false');
+    function renderResourceDropdown() {
+        const items = allResources.map(r => ({ id: String(r.id), label: r.name }));
+        buildDropdown({
+            panelEl: dropdownResources,
+            btnEl: btnFilterResources,
+            items: items,
+            selectedSet: selectedResourceIds,
+            defaultLabel: 'Resources',
+            hasSearch: items.length > 8,
+            showBulkActions: items.length > 1,
+            onToggle: () => {
+                updateClearButton();
+                renderTable();
+                updateFooter();
+            }
         });
-        filterClearBtn.classList.add('hidden');
+    }
+
+    function updateAvailableRooms() {
+        const roomSet = new Set();
+        for (const r of currentRows) {
+            if (r.room_name) roomSet.add(r.room_name);
+        }
+        availableRooms = Array.from(roomSet).sort((a, b) => a.localeCompare(b));
+        renderRoomDropdown();
+    }
+
+    function renderRoomDropdown() {
+        const items = availableRooms.map(name => ({ id: name, label: name }));
+        buildDropdown({
+            panelEl: dropdownRooms,
+            btnEl: btnFilterRooms,
+            items: items,
+            selectedSet: selectedRoomNames,
+            defaultLabel: 'Rooms',
+            hasSearch: items.length > 8,
+            showBulkActions: items.length > 1,
+            onToggle: () => {
+                updateClearButton();
+                renderTable();
+                updateFooter();
+            }
+        });
+    }
+
+    function buildDropdown(options) {
+        const {
+            panelEl,
+            btnEl,
+            items,
+            selectedSet,
+            defaultLabel,
+            hasSearch = false,
+            showBulkActions = true,
+            onToggle = () => {}
+        } = options;
+
+        if (!panelEl || !btnEl) return;
+        panelEl.replaceChildren();
+
+        if (items.length === 0) {
+            const empty = el('div', { cls: 'dropdown-placeholder' });
+            empty.textContent = `No ${defaultLabel.toLowerCase()} available`;
+            panelEl.appendChild(empty);
+            updateDropdownButtonState(btnEl, selectedSet, defaultLabel);
+            return;
+        }
+
+        if (hasSearch) {
+            const searchDiv = el('div', { cls: 'dropdown-search' });
+            const searchIn = el('input', {
+                type: 'text',
+                placeholder: 'Filter...',
+                'aria-label': `Filter ${defaultLabel.toLowerCase()}`
+            });
+            searchIn.addEventListener('input', () => {
+                const q = searchIn.value.toLowerCase();
+                panelEl.querySelectorAll('.dropdown-item').forEach(item => {
+                    const label = item.getAttribute('data-label') || '';
+                    item.style.display = label.toLowerCase().includes(q) ? '' : 'none';
+                });
+            });
+            searchDiv.appendChild(searchIn);
+            panelEl.appendChild(searchDiv);
+        }
+
+        if (showBulkActions) {
+            const bulkBar = el('div', { cls: 'dropdown-bulk-actions' });
+            const btnSelectAll = el('button', { cls: 'dropdown-bulk-btn', type: 'button' });
+            btnSelectAll.textContent = 'Select all';
+            btnSelectAll.addEventListener('click', (e) => {
+                e.stopPropagation();
+                items.forEach(item => selectedSet.add(String(item.id)));
+                panelEl.querySelectorAll('.dropdown-item').forEach(row => {
+                    row.classList.add('selected');
+                    row.setAttribute('aria-checked', 'true');
+                });
+                updateDropdownButtonState(btnEl, selectedSet, defaultLabel);
+                onToggle();
+            });
+
+            const btnClear = el('button', { cls: 'dropdown-bulk-btn', type: 'button' });
+            btnClear.textContent = 'Clear';
+            btnClear.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectedSet.clear();
+                panelEl.querySelectorAll('.dropdown-item').forEach(row => {
+                    row.classList.remove('selected');
+                    row.setAttribute('aria-checked', 'false');
+                });
+                updateDropdownButtonState(btnEl, selectedSet, defaultLabel);
+                onToggle();
+            });
+
+            bulkBar.appendChild(btnSelectAll);
+            bulkBar.appendChild(btnClear);
+            panelEl.appendChild(bulkBar);
+        }
+
+        items.forEach(item => {
+            const idStr = String(item.id);
+            const label = item.label || idStr;
+            const isSelected = selectedSet.has(idStr);
+
+            const row = el('div', {
+                cls: `dropdown-item ${isSelected ? 'selected' : ''}`,
+                'data-id': idStr,
+                'data-label': label,
+                role: 'menuitemcheckbox',
+                'aria-checked': isSelected ? 'true' : 'false'
+            });
+
+            const checkbox = el('span', { cls: 'checkbox' });
+            const labelEl = el('span', { cls: 'item-label' });
+            labelEl.textContent = label;
+
+            row.appendChild(checkbox);
+            row.appendChild(labelEl);
+
+            row.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (selectedSet.has(idStr)) {
+                    selectedSet.delete(idStr);
+                    row.classList.remove('selected');
+                    row.setAttribute('aria-checked', 'false');
+                } else {
+                    selectedSet.add(idStr);
+                    row.classList.add('selected');
+                    row.setAttribute('aria-checked', 'true');
+                }
+                updateDropdownButtonState(btnEl, selectedSet, defaultLabel);
+                onToggle();
+            });
+
+            panelEl.appendChild(row);
+        });
+
+        updateDropdownButtonState(btnEl, selectedSet, defaultLabel);
+    }
+
+    function updateDropdownButtonState(btnEl, selectedSet, defaultLabel) {
+        if (!btnEl) return;
+        const span = btnEl.querySelector('span');
+        if (selectedSet.size > 0) {
+            btnEl.classList.add('has-selection');
+            if (span) span.textContent = `${defaultLabel} (${selectedSet.size})`;
+        } else {
+            btnEl.classList.remove('has-selection');
+            if (span) span.textContent = defaultLabel;
+        }
+    }
+
+    function setupDropdownToggle(btnEl, panelEl) {
+        if (!btnEl || !panelEl) return;
+        btnEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = panelEl.classList.contains('open');
+            closeAllDropdowns();
+            if (!isOpen) {
+                panelEl.classList.add('open');
+                btnEl.setAttribute('aria-expanded', 'true');
+                const searchIn = panelEl.querySelector('.dropdown-search input');
+                if (searchIn) searchIn.focus();
+            }
+        });
+    }
+
+    function closeAllDropdowns() {
+        document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('open'));
+        document.querySelectorAll('.filter-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.filter-dropdown')) {
+            closeAllDropdowns();
+        }
+    });
+
+    function updateClearButton() {
+        if (!btnClearFilters) return;
+        if (selectedResourceIds.size > 0 || selectedRoomNames.size > 0 || searchQuery.length > 0) {
+            btnClearFilters.classList.remove('hidden');
+        } else {
+            btnClearFilters.classList.add('hidden');
+        }
+    }
+
+    btnClearFilters?.addEventListener('click', () => {
+        selectedResourceIds.clear();
+        selectedRoomNames.clear();
+        searchQuery = '';
+        if (searchInput) searchInput.value = '';
+
+        renderResourceDropdown();
+        renderRoomDropdown();
+        updateClearButton();
         renderTable();
         updateFooter();
     });
 
+    const handleSearchInput = debounce(() => {
+        searchQuery = (searchInput.value || '').trim();
+        updateClearButton();
+        renderTable();
+        updateFooter();
+    }, 150);
+
+    searchInput?.addEventListener('input', handleSearchInput);
+
+    setupDropdownToggle(btnFilterResources, dropdownResources);
+    setupDropdownToggle(btnFilterRooms, dropdownRooms);
+
     function getFilteredRows() {
-        if (selectedResourceIds.size === 0) return currentRows;
-        return currentRows.filter(row =>
-            (row.resources || []).some(r => selectedResourceIds.has(r.resource_id))
-        );
+        let rows = currentRows;
+
+        if (selectedResourceIds.size > 0) {
+            rows = rows.filter(row =>
+                (row.resources || []).some(r => selectedResourceIds.has(String(r.resource_id)))
+            );
+        }
+
+        if (selectedRoomNames.size > 0) {
+            rows = rows.filter(row =>
+                selectedRoomNames.has(row.room_name || '')
+            );
+        }
+
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            rows = rows.filter(row => {
+                if ((row.title || '').toLowerCase().includes(q)) return true;
+                if ((row.code || '').toLowerCase().includes(q)) return true;
+                if ((row.room_name || '').toLowerCase().includes(q)) return true;
+                if ((row.submission_type || '').toLowerCase().includes(q)) return true;
+                if ((row.day_label || '').toLowerCase().includes(q)) return true;
+                if ((row.start_time || '').toLowerCase().includes(q)) return true;
+                if ((row.speakers || []).some(s =>
+                    (s.name || '').toLowerCase().includes(q) ||
+                    (s.telegram || '').toLowerCase().includes(q)
+                )) return true;
+                if ((row.resources || []).some(r =>
+                    (r.resource_name || '').toLowerCase().includes(q) ||
+                    (r.note || '').toLowerCase().includes(q)
+                )) return true;
+                if ((row.comments || []).some(c =>
+                    (c.text || '').toLowerCase().includes(q)
+                )) return true;
+                return false;
+            });
+        }
+
+        return rows;
     }
 
     function showLoading() {
@@ -276,8 +501,18 @@
     function updateFooter() {
         if (!footerEl) return;
         const rows = getFilteredRows();
-        const filterNote = selectedResourceIds.size > 0
-            ? ` · Filtered by ${selectedResourceIds.size} resource${selectedResourceIds.size !== 1 ? 's' : ''}`
+        const notes = [];
+        if (selectedResourceIds.size > 0) {
+            notes.push(`${selectedResourceIds.size} resource${selectedResourceIds.size !== 1 ? 's' : ''}`);
+        }
+        if (selectedRoomNames.size > 0) {
+            notes.push(`${selectedRoomNames.size} room${selectedRoomNames.size !== 1 ? 's' : ''}`);
+        }
+        if (searchQuery) {
+            notes.push(`search "${searchQuery}"`);
+        }
+        const filterNote = notes.length > 0
+            ? ` · Filtered by ${notes.join(', ')}`
             : '';
         footerEl.textContent = `${rows.length} event slot${rows.length !== 1 ? 's' : ''} · Department: ${currentDept === 'all' ? 'All' : currentDept}${filterNote}`;
     }

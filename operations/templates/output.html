@@ -29,14 +29,37 @@
         {% endfor %}
     </div>
 
-    <!-- Resource filter bar -->
-    <div class="resource-filter-bar" id="resource-filter-bar" aria-label="Filter by resource">
-        <span class="resource-filter-label">Filter by resource:</span>
-        <div class="resource-filter-chips" id="resource-filter-chips" role="group" aria-label="Resource toggles">
-            <div class="resource-filter-loading">Loading…</div>
+    <!-- Filters bar -->
+    <div class="filters-bar" id="output-filters-bar" aria-label="Output filters">
+        <div class="search-box">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input id="output-filter-search" type="text" placeholder="Search events, speakers, code..." aria-label="Search output events">
         </div>
-        <button class="btn btn-ghost btn-sm resource-filter-clear hidden" id="resource-filter-clear" aria-label="Clear resource filter">
-            ✕ Clear
+        <div class="filter-dropdowns">
+            <div class="filter-dropdown" id="filter-resources-wrapper">
+                <button id="btn-filter-resources" class="filter-btn" aria-haspopup="true" aria-expanded="false">
+                    <span>Resources</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+                <div id="dropdown-resources" class="dropdown-panel" role="menu"></div>
+            </div>
+            <div class="filter-dropdown" id="filter-rooms-wrapper">
+                <button id="btn-filter-rooms" class="filter-btn" aria-haspopup="true" aria-expanded="false">
+                    <span>Rooms</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+                <div id="dropdown-rooms" class="dropdown-panel" role="menu"></div>
+            </div>
+        </div>
+        <button id="btn-clear-filters" class="btn btn-ghost btn-sm btn-clear-filters hidden" aria-label="Clear all filters">
+            ✕ Clear filters
         </button>
     </div>
 

@@ -30,7 +30,10 @@
 
     // ---------------------------------------------------------------------------
     // Load output data
-    // ---------------------------------------------------------------------------
+    /**
+     * Loads output data for a department and refreshes the table and footer.
+     * @param {string} dept - The department whose output should be loaded.
+     */
 
     async function loadOutput(dept) {
         showLoading();
@@ -47,7 +50,10 @@
 
     // ---------------------------------------------------------------------------
     // Filters logic & Dropdowns
-    // ---------------------------------------------------------------------------
+    /**
+     * Loads available resources and updates the resource filter.
+     * On failure, clears the available resources and renders an empty filter.
+     */
 
     async function loadResourceFilter() {
         try {
@@ -60,6 +66,9 @@
         }
     }
 
+    /**
+     * Renders the resource filter dropdown using the available resources and current selections.
+     */
     function renderResourceDropdown() {
         const items = allResources.map(r => ({ id: String(r.id), label: r.name }));
         buildDropdown({
@@ -78,6 +87,9 @@
         });
     }
 
+    /**
+     * Updates the room filter with the unique room names from the current rows.
+     */
     function updateAvailableRooms() {
         const roomSet = new Set();
         for (const r of currentRows) {
@@ -105,6 +117,18 @@
         });
     }
 
+    /**
+     * Builds a selectable dropdown panel and synchronizes its button state.
+     * @param {Object} options - Dropdown configuration.
+     * @param {HTMLElement} options.panelEl - Element that contains the dropdown contents.
+     * @param {HTMLElement} options.btnEl - Button whose label and selection state are updated.
+     * @param {Array<Object>} options.items - Items to display, each with an `id` and optional `label`.
+     * @param {Set<string>} options.selectedSet - Set of selected item identifiers.
+     * @param {string} options.defaultLabel - Label used when no items are selected.
+     * @param {boolean} [options.hasSearch=false] - Whether to include an item search field.
+     * @param {boolean} [options.showBulkActions=true] - Whether to include select-all and clear actions.
+     * @param {Function} [options.onToggle] - Callback invoked after the selection changes.
+     */
     function buildDropdown(options) {
         const {
             panelEl,
@@ -220,6 +244,12 @@
         updateDropdownButtonState(btnEl, selectedSet, defaultLabel);
     }
 
+    /**
+     * Updates a dropdown button to reflect its current selection count.
+     * @param {HTMLElement} btnEl - The dropdown button to update.
+     * @param {Set} selectedSet - The selected option values.
+     * @param {string} defaultLabel - The button label when no options are selected.
+     */
     function updateDropdownButtonState(btnEl, selectedSet, defaultLabel) {
         if (!btnEl) return;
         const span = btnEl.querySelector('span');
@@ -232,6 +262,11 @@
         }
     }
 
+    /**
+     * Configures a button to toggle its associated dropdown panel.
+     * @param {HTMLElement} btnEl - The button that controls the dropdown.
+     * @param {HTMLElement} panelEl - The dropdown panel to open or close.
+     */
     function setupDropdownToggle(btnEl, panelEl) {
         if (!btnEl || !panelEl) return;
         btnEl.addEventListener('click', (e) => {
@@ -247,6 +282,9 @@
         });
     }
 
+    /**
+     * Closes all filter dropdown panels and updates their expanded accessibility state.
+     */
     function closeAllDropdowns() {
         document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('open'));
         document.querySelectorAll('.filter-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
@@ -258,6 +296,9 @@
         }
     });
 
+    /**
+     * Updates the visibility of the clear-filters button based on the active filters.
+     */
     function updateClearButton() {
         if (!btnClearFilters) return;
         if (selectedResourceIds.size > 0 || selectedRoomNames.size > 0 || searchQuery.length > 0) {
@@ -292,6 +333,10 @@
     setupDropdownToggle(btnFilterResources, dropdownResources);
     setupDropdownToggle(btnFilterRooms, dropdownRooms);
 
+    /**
+     * Filters output rows by selected resources, rooms, and search text.
+     * @return {Array} The rows matching all active filters.
+     */
     function getFilteredRows() {
         let rows = currentRows;
 
@@ -334,6 +379,9 @@
         return rows;
     }
 
+    /**
+     * Displays a loading placeholder in the output table.
+     */
     function showLoading() {
         tbody.innerHTML = '';
         const tr = el('tr', { cls: 'table-placeholder' });
@@ -498,6 +546,9 @@
         }
     }
 
+    /**
+     * Updates the footer with the filtered event count, current department, and active filter descriptions.
+     */
     function updateFooter() {
         if (!footerEl) return;
         const rows = getFilteredRows();

@@ -84,6 +84,12 @@
             if (r.room_name) roomSet.add(r.room_name);
         }
         availableRooms = Array.from(roomSet).sort((a, b) => a.localeCompare(b));
+        // Prune selectedRoomNames to only include rooms still available
+        for (const roomName of selectedRoomNames) {
+            if (!roomSet.has(roomName)) {
+                selectedRoomNames.delete(roomName);
+            }
+        }
         renderRoomDropdown();
     }
 
@@ -189,7 +195,8 @@
                 'data-id': idStr,
                 'data-label': label,
                 role: 'menuitemcheckbox',
-                'aria-checked': isSelected ? 'true' : 'false'
+                'aria-checked': isSelected ? 'true' : 'false',
+                tabindex: '0'
             });
 
             const checkbox = el('span', { cls: 'checkbox' });
@@ -199,8 +206,7 @@
             row.appendChild(checkbox);
             row.appendChild(labelEl);
 
-            row.addEventListener('click', (e) => {
-                e.stopPropagation();
+            const toggleItem = () => {
                 if (selectedSet.has(idStr)) {
                     selectedSet.delete(idStr);
                     row.classList.remove('selected');
@@ -212,6 +218,19 @@
                 }
                 updateDropdownButtonState(btnEl, selectedSet, defaultLabel);
                 onToggle();
+            };
+
+            row.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleItem();
+            });
+
+            row.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleItem();
+                }
             });
 
             panelEl.appendChild(row);
@@ -255,6 +274,20 @@
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.filter-dropdown')) {
             closeAllDropdowns();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const openPanel = document.querySelector('.dropdown-panel.open');
+            if (openPanel) {
+                const filterDropdown = openPanel.closest('.filter-dropdown');
+                const filterBtn = filterDropdown?.querySelector('.filter-btn');
+                closeAllDropdowns();
+                if (filterBtn) {
+                    filterBtn.focus();
+                }
+            }
         }
     });
 

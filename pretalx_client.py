@@ -611,7 +611,7 @@ class PretalxClient:
         if tid not in existing_ids:
             existing_ids.append(tid)
             return self.update_submission_tags(event_slug, code, existing_ids)
-        return sub if isinstance(current_tags[0], dict) else {"code": code, "tags": existing_ids}
+        return sub if sub is not None else {"code": code, "tags": existing_ids}
 
     def remove_submission_tag(self, event_slug, code, tag_id, current_tags=None):
         """

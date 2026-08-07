@@ -225,7 +225,7 @@ def process_mapping(client, event_slug, mapping, target_submission=None, dry_run
             continue
 
         ans_display = f"'{ans_str}'" if ans_str is not None else "<NO_ANSWER>"
-        prefix = f"[DRY-RUN] " if dry_run else ""
+        prefix = "[DRY-RUN] " if dry_run else ""
 
         if needs_add:
             color_fn = green
@@ -239,14 +239,18 @@ def process_mapping(client, event_slug, mapping, target_submission=None, dry_run
         if not dry_run:
             try:
                 client.update_submission_tags(event_slug, code, target_tag_ids)
-                if needs_add: stats["added"] += 1
-                if needs_remove: stats["removed"] += 1
+                if needs_add:
+                    stats["added"] += 1
+                if needs_remove:
+                    stats["removed"] += 1
             except PretalxAPIError as e:
                 stats["errors"] += 1
                 print(f"    {red('ERROR updating submission')} {code}: {e}")
         else:
-            if needs_add: stats["added"] += 1
-            if needs_remove: stats["removed"] += 1
+            if needs_add:
+                stats["added"] += 1
+            if needs_remove:
+                stats["removed"] += 1
 
     # Output rule summary
     dry_prefix = f" {yellow('[DRY-RUN mode - no changes saved]')}" if dry_run else ""

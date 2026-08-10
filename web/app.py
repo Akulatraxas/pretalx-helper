@@ -30,6 +30,7 @@ SCHEDULE_VERSION = os.environ.get("SCHEDULE_VERSION", "wip")
 BASE_PATH = os.environ.get("BASE_PATH", "/ef-schedule-preview")
 EF_SCHEDULE_IMPRINT = os.environ.get("EF_SCHEDULE_IMPRINT", "https://help.eurofurence.org/legal/imprint")
 EF_SCHEDULE_PRIVACY = os.environ.get("EF_SCHEDULE_PRIVACY", "https://help.eurofurence.org/legal/privacy")
+EF_SCHEDULE_IGNORE_TAGS_IDS = os.environ.get("EF_SCHEDULE_IGNORE_TAGS_IDS", "")
 
 if not PRETALX_URL or not PRETALX_APIKEY:
     sys.stderr.write("Error: PRETALX_URL and PRETALX_APIKEY environment variables are required.\n")
@@ -123,6 +124,10 @@ def build_schedule_data(client, event_slug, schedule_version):
     tags_raw = list(client.list_tags(event_slug))
     tags = []
     tag_lookup = {}
+    ignore_ids = set()
+    if EF_SCHEDULE_IGNORE_TAGS_IDS:
+        ignore_ids = [int(x.strip()) for x in EF_SCHEDULE_IGNORE_TAGS_IDS.split(",") if x.strip().isdigit()]
+        logger.info("Ignoring tags with IDs: %s", ignore_ids)
     for t in tags_raw:
         tag_name = t.get("tag") or t.get("name")
         tag_str = format_localized(tag_name) if isinstance(tag_name, dict) else str(tag_name or "")
@@ -211,6 +216,7 @@ def build_schedule_data(client, event_slug, schedule_version):
             slot_tags = []
             for tag in sub_data.get("tags", []):
                 tag_id = extract_id(tag)
+                if tag_id in ignore_ids: continue
                 if tag_id in tag_lookup:
                     slot_tags.append({
                         "id": tag_id,

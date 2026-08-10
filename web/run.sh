@@ -39,6 +39,7 @@ podman run --rm -d \
     -e BASE_PATH="${BASE_PATH:-/ef-schedule-preview}" \
     -e EF_SCHEDULE_IMPRINT="${EF_SCHEDULE_IMPRINT}" \
     -e EF_SCHEDULE_PRIVACY="${EF_SCHEDULE_PRIVACY}" \
+    -e EF_SCHEDULE_IGNORE_TAGS_IDS="${EF_SCHEDULE_IGNORE_TAGS_IDS}" \
     "$IMAGE_NAME"
 
 echo ""

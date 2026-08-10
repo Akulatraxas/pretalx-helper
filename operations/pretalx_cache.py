@@ -353,15 +353,165 @@ def find_conflicts(cache_data, assignments):
 # Background fetch + public accessors
 # ---------------------------------------------------------------------------
 
+def _detect_changes(old_cache, new_cache):
+    """
+    Compare old and new slot snapshots and return a list of change dicts.
+
+    Change types detected
+    ---------------------
+    'new'       — slot exists in new version but not in old (new submission or
+                  extra slot added to an existing submission)
+    'cancelled' — slot exists in old version but not in new
+    'time'      — start or end time moved (same day)
+    'day'       — date part changed
+    'room'      — room_name changed
+
+    Slot-matching strategy
+    ----------------------
+    slot_index is 0-based and assigned in API order, so dropping a slot causes
+    all subsequent indices to shift.  We therefore match slots *within a
+    submission* by pairing them in sorted start-time order rather than by
+    slot_index.  This avoids false "time changed" hits when only slot ordering
+    changed.
+    """
+    if not old_cache or not new_cache:
+        return []
+
+    from_version = old_cache.get("schedule_version", "")
+    to_version   = new_cache.get("schedule_version", "")
+    if from_version == to_version:
+        return []
+
+    old_subs = old_cache.get("submissions_map", {})
+    new_subs = new_cache.get("submissions_map", {})
+
+    all_codes = set(old_subs) | set(new_subs)
+    detected  = []
+
+    def _base(code, slot, types):
+        return {
+            "submission_code": code,
+            "slot_index":      slot.get("slot_index", 0),
+            "from_version":    from_version,
+            "to_version":      to_version,
+            "change_types":    types,
+        }
+
+    for code in all_codes:
+        old_sub = old_subs.get(code)
+        new_sub = new_subs.get(code)
+
+        # ── Entire submission added ──
+        if old_sub is None and new_sub is not None:
+            for slot in sorted(new_sub["slots"], key=lambda s: s["start"]):
+                detected.append({
+                    **_base(code, slot, ["new"]),
+                    "old_start": None, "old_end": None, "old_room": None,
+                    "new_start": slot["start"], "new_end": slot["end"],
+                    "new_room":  slot["room_name"],
+                })
+            continue
+
+        # ── Entire submission removed ──
+        if new_sub is None and old_sub is not None:
+            for slot in sorted(old_sub["slots"], key=lambda s: s["start"]):
+                detected.append({
+                    **_base(code, slot, ["cancelled"]),
+                    "old_start": slot["start"], "old_end": slot["end"],
+                    "old_room":  slot["room_name"],
+                    "new_start": None, "new_end": None, "new_room": None,
+                })
+            continue
+
+        # ── Submission exists in both — diff individual slots by start time ──
+        old_slots = sorted(old_sub["slots"], key=lambda s: s["start"])
+        new_slots = sorted(new_sub["slots"], key=lambda s: s["start"])
+
+        # Pair up slots positionally (by sorted order).
+        # Extra slots at the end of the longer list are new / cancelled.
+        pairs = min(len(old_slots), len(new_slots))
+
+        for i in range(pairs):
+            old_slot = old_slots[i]
+            new_slot = new_slots[i]
+            change_types = []
+
+            old_start = old_slot.get("start", "")
+            old_end   = old_slot.get("end",   "")
+            new_start = new_slot.get("start", "")
+            new_end   = new_slot.get("end",   "")
+
+            if old_start[:10] != new_start[:10]:
+                change_types.append("day")
+
+            if old_start != new_start or old_end != new_end:
+                if "day" not in change_types:
+                    change_types.append("time")
+
+            if old_slot.get("room_name", "") != new_slot.get("room_name", ""):
+                change_types.append("room")
+
+            if change_types:
+                detected.append({
+                    **_base(code, new_slot, change_types),
+                    "old_start": old_start,
+                    "old_end":   old_end,
+                    "old_room":  old_slot.get("room_name", ""),
+                    "new_start": new_start,
+                    "new_end":   new_end,
+                    "new_room":  new_slot.get("room_name", ""),
+                })
+
+        # Extra new slots (submission gained slots)
+        for slot in new_slots[pairs:]:
+            detected.append({
+                **_base(code, slot, ["new"]),
+                "old_start": None, "old_end": None, "old_room": None,
+                "new_start": slot["start"], "new_end": slot["end"],
+                "new_room":  slot["room_name"],
+            })
+
+        # Extra old slots (submission lost slots)
+        for slot in old_slots[pairs:]:
+            detected.append({
+                **_base(code, slot, ["cancelled"]),
+                "old_start": slot["start"], "old_end": slot["end"],
+                "old_room":  slot["room_name"],
+                "new_start": None, "new_end": None, "new_room": None,
+            })
+
+    return detected
+
+
+
 def _do_fetch():
     try:
         client = PretalxClient(url=PRETALX_URL, apikey=PRETALX_APIKEY)
         data   = build_cache(client, PRETALX_EVENT, SCHEDULE_VERSION)
+
         with _cache["lock"]:
+            old_data               = _cache["data"]
             _cache["data"]         = data
             _cache["last_fetched"] = time.time()
             _cache["error"]        = None
-        logger.info("Pretalx cache refreshed successfully.")
+
+        # Detect changes between old and new schedule version
+        changes = _detect_changes(old_data, data)
+        if changes:
+            logger.info(
+                "Schedule version changed %s → %s: %d slot change(s) detected.",
+                (old_data or {}).get("schedule_version", "?"),
+                data.get("schedule_version", "?"),
+                len(changes),
+            )
+            try:
+                import db as _db
+                _db.insert_schedule_changes(changes)
+            except Exception as db_exc:
+                logger.error("Failed to persist schedule changes: %s", db_exc)
+        else:
+            logger.info("Pretalx cache refreshed successfully.")
+
     except Exception as exc:
         logger.error("Pretalx cache fetch failed: %s", exc)
         with _cache["lock"]:

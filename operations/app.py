@@ -131,6 +131,12 @@ def page_operations():
 def page_occupancy():
     return render_template("occupancy.html", page="occupancy")
 
+
+@app.route(f"{BASE_PATH}/delays")
+@auth.require_read
+def page_delays():
+    return render_template("delays.html", page="delays")
+
 # ---------------------------------------------------------------------------
 # API — Health & debug
 # ---------------------------------------------------------------------------
@@ -865,6 +871,194 @@ def _build_output_rows(cache, by_code, conflict_codes):
 
     rows.sort(key=lambda r: (r["date"], r["start"]))
     return rows
+
+
+# ---------------------------------------------------------------------------
+# API — Delays
+# ---------------------------------------------------------------------------
+
+@app.route(f"{BASE_PATH}/api/delays")
+@auth.require_read
+def api_delays():
+    """
+    Return submissions whose slots are currently running OR start within the
+    next 4 hours, enriched with any active delay record.
+
+    Query params:
+      ?hours=N   — lookahead window in hours (default 4)
+      ?at=...    — override reference time (test mode)
+    """
+    from datetime import datetime, timezone, timedelta
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    cache = pretalx_cache.get_cache()
+    if cache is None:
+        return jsonify({"error": "Cache not ready"}), 503
+
+    try:
+        event_tz = ZoneInfo(EVENT_TIMEZONE)
+    except ZoneInfoNotFoundError:
+        event_tz = timezone.utc
+
+    at_str = (request.args.get("at") or "").strip()
+    if at_str:
+        try:
+            now = datetime.fromisoformat(at_str)
+            if now.tzinfo is None:
+                now = now.replace(tzinfo=event_tz)
+        except ValueError:
+            now = datetime.now(tz=event_tz)
+    else:
+        now = datetime.now(tz=event_tz)
+
+    try:
+        hours = max(1, min(24, int(request.args.get("hours", 4))))
+    except (ValueError, TypeError):
+        hours = 4
+    window_end = now + timedelta(hours=hours)
+
+    result = []
+    for slot in cache["slots_flat"]:
+        code      = slot["submission_code"]
+        start_raw = slot.get("start", "")
+        end_raw   = slot.get("end", "")
+        if not start_raw:
+            continue
+
+        try:
+            slot_start = datetime.fromisoformat(start_raw)
+            if slot_start.tzinfo is None:
+                slot_start = slot_start.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+
+        try:
+            slot_end = datetime.fromisoformat(end_raw) if end_raw else slot_start
+            if slot_end.tzinfo is None:
+                slot_end = slot_end.replace(tzinfo=timezone.utc)
+        except ValueError:
+            slot_end = slot_start
+
+        is_running   = slot_start <= now <= slot_end
+        starting_soon = now <= slot_start <= window_end
+        if not (is_running or starting_soon):
+            continue
+
+        sub = cache["submissions_map"].get(code)
+        if not sub:
+            continue
+
+        result.append({
+            "code":            code,
+            "title":           sub["title"],
+            "track":           sub["track"],
+            "submission_type": sub["submission_type"],
+            "speakers":        sub["speakers"],
+            "slot_index":      slot.get("slot_index", 0),
+            "start":           start_raw,
+            "end":             end_raw,
+            "room_name":       slot.get("room_name", ""),
+            "is_running":      is_running,
+        })
+
+    # Enrich with delay data (bulk query)
+    codes_in_result = list({s["code"] for s in result})
+    delay_map = db.get_delays_for_codes(codes_in_result)
+    for s in result:
+        d = delay_map.get((s["code"], s["slot_index"]))
+        s["delay_minutes"] = d["delay_minutes"] if d else None
+        s["delay_comment"] = d["comment"]       if d else None
+        s["delay_set_by"]  = d["set_by"]        if d else None
+        s["delay_set_at"]  = d["updated_at"]    if d else None
+
+    result.sort(key=lambda x: (x["start"], x["room_name"]))
+    return jsonify({
+        "slots":          result,
+        "reference_time": now.isoformat(),
+        "is_test_mode":   bool(at_str),
+    })
+
+
+@app.route(
+    f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/delay",
+    methods=["POST"],
+)
+@auth.require_write
+def api_slot_set_delay(code, slot_index):
+    """Set or update a delay for a slot."""
+    data = request.get_json(force=True) or {}
+    try:
+        minutes = int(data.get("minutes", 0))
+    except (ValueError, TypeError):
+        return jsonify({"error": "minutes must be an integer"}), 400
+    if minutes < 1 or minutes > 1440:
+        return jsonify({"error": "minutes must be between 1 and 1440"}), 400
+
+    comment = (data.get("comment") or "").strip() or None
+    db.upsert_delay(code, slot_index, minutes, comment,
+                    user_email=g.user.get("email"))
+    return jsonify({"ok": True, "delay_minutes": minutes, "comment": comment})
+
+
+@app.route(
+    f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/delay",
+    methods=["DELETE"],
+)
+@auth.require_write
+def api_slot_clear_delay(code, slot_index):
+    """Remove a delay record for a slot."""
+    db.clear_delay(code, slot_index, user_email=g.user.get("email"))
+    return jsonify({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# API — Schedule Changes
+# ---------------------------------------------------------------------------
+
+@app.route(f"{BASE_PATH}/api/changes")
+@auth.require_read
+def api_changes():
+    """
+    Return all pending schedule changes, enriched with submission title/track
+    from the in-memory cache.
+    """
+    rows = db.get_pending_changes()
+
+    cache = pretalx_cache.get_cache()
+    sub_map = (cache or {}).get("submissions_map", {})
+
+    result = []
+    for r in rows:
+        sub = sub_map.get(r["submission_code"]) or {}
+        r["title"]   = sub.get("title", r["submission_code"])
+        r["track"]   = sub.get("track")
+        r["speakers"] = sub.get("speakers", [])
+        result.append(r)
+
+    return jsonify({"changes": result})
+
+
+@app.route(f"{BASE_PATH}/api/changes/<int:change_id>/send", methods=["POST"])
+@auth.require_write
+def api_change_send(change_id):
+    """
+    Mark a change as 'sent' (announcement placeholder — implementation TBD).
+    """
+    ok = db.action_change(change_id, "sent", user_email=g.user.get("email"))
+    if not ok:
+        return jsonify({"error": "Change not found or already actioned"}), 404
+    # TODO: trigger actual announcement when announcement system is ready
+    return jsonify({"ok": True, "status": "sent"})
+
+
+@app.route(f"{BASE_PATH}/api/changes/<int:change_id>/discard", methods=["POST"])
+@auth.require_write
+def api_change_discard(change_id):
+    """Discard a pending change (suppress it from the UI)."""
+    ok = db.action_change(change_id, "discarded", user_email=g.user.get("email"))
+    if not ok:
+        return jsonify({"error": "Change not found or already actioned"}), 404
+    return jsonify({"ok": True, "status": "discarded"})
 
 
 # ---------------------------------------------------------------------------

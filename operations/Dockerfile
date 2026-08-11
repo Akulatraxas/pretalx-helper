@@ -32,4 +32,4 @@ EXPOSE 8090
 # Run Alembic migrations then start gunicorn.
 # Using a single worker + threads because SQLite WAL handles concurrent reads
 # well, but write serialisation happens at the DB level anyway.
-CMD ["sh", "-c", "alembic upgrade head && gunicorn --bind 0.0.0.0:8090 --workers 2 --threads 4 --timeout 120 app:app"]
+CMD ["sh", "-c", "alembic upgrade head && gunicorn --bind 0.0.0.0:8090 --workers 1 --threads 4 --timeout 120 --log-level info --capture-output app:app"]

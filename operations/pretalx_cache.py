@@ -369,10 +369,10 @@ def _detect_changes(old_cache, new_cache):
     Slot-matching strategy
     ----------------------
     slot_index is 0-based and assigned in API order, so dropping a slot causes
-    all subsequent indices to shift.  We therefore match slots *within a
-    submission* by pairing them in sorted start-time order rather than by
+    all subsequent indices to shift.  We match slots *within a submission*
+    by pairing them in sorted start-time order rather than by
     slot_index.  This avoids false "time changed" hits when only slot ordering
-    changed.
+    changed. This is a rare situation anyway as all normal panels are single slot.
     """
     if not old_cache or not new_cache:
         return []

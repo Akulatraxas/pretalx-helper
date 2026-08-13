@@ -680,6 +680,25 @@ def get_pending_changes():
     return result
 
 
+def get_change_by_id(change_id):
+    """Return a single schedule_change row as a dict, or None if not found."""
+    with engine.connect() as conn:
+        row = conn.execute(text("""
+            SELECT id, submission_code, slot_index, from_version, to_version,
+                   change_types,
+                   old_start, old_end, old_room,
+                   new_start, new_end, new_room,
+                   status, actioned_by, detected_at, actioned_at
+            FROM schedule_changes
+            WHERE id = :id
+        """), {"id": change_id}).fetchone()
+    if row is None:
+        return None
+    r = _to_dict(row)
+    r["change_types"] = [t for t in r["change_types"].split(",") if t]
+    return r
+
+
 def action_change(change_id, action, user_email=None):
     """
     Transition a schedule_change to 'sent' or 'discarded'.

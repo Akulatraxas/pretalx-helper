@@ -46,6 +46,14 @@ DEV_AUTH_EMAIL="${DEV_AUTH_EMAIL:-}"
 DEV_AUTH_USER="${DEV_AUTH_USER:-}"
 DEV_AUTH_GROUPS="${DEV_AUTH_GROUPS:-}"
 
+# APP Data and Credentials
+EF_APP_API="${EF_APP_API:-}"
+EF_APP_ANNOUNCE_TOKEN="${EF_APP_ANNOUNCE_TOKEN:-}"
+
+# EFSCHED Bot Data and Credentials
+EF_EFSCHED_BOT="${EF_EFSCHED_BOT:-}"
+EF_EFSCHED_BOT_TOKEN="${EF_EFSCHED_BOT_TOKEN:-}"
+
 # --- Prepare build context ---
 echo "→ Copying pretalx_client.py from parent directory…"
 cp "$(dirname "$0")/../pretalx_client.py" "$(dirname "$0")/pretalx_client.py"
@@ -89,6 +97,10 @@ podman run -d \
     -e "DEV_AUTH_EMAIL=${DEV_AUTH_EMAIL}" \
     -e "DEV_AUTH_USER=${DEV_AUTH_USER}" \
     -e "DEV_AUTH_GROUPS=${DEV_AUTH_GROUPS}" \
+    -e "EF_APP_API=${EF_APP_API}" \
+    -e "EF_APP_ANNOUNCE_TOKEN=${EF_APP_ANNOUNCE_TOKEN}" \
+    -e "EF_EFSCHED_BOT=${EF_EFSCHED_BOT}" \
+    -e "EF_EFSCHED_BOT_TOKEN=${EF_EFSCHED_BOT_TOKEN}" \
     "${IMAGE_TAG}"
 
 echo ""

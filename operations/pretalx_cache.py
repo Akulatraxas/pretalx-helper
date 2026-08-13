@@ -434,12 +434,45 @@ def _detect_changes(old_cache, new_cache):
         for i in range(pairs):
             old_slot = old_slots[i]
             new_slot = new_slots[i]
-            change_types = []
 
             old_start = old_slot.get("start", "")
             old_end   = old_slot.get("end",   "")
             new_start = new_slot.get("start", "")
             new_end   = new_slot.get("end",   "")
+
+            # ── Scheduling state transitions ──────────────────────────────────
+            # An empty start means the slot exists in the API but has no time
+            # assigned (Pretalx "unscheduled" state).  Treat transitions in/out
+            # of this state as their own change types rather than letting the
+            # time/room comparisons produce spurious "day" + "room" hits.
+            was_unscheduled = not old_start
+            now_unscheduled = not new_start
+
+            if was_unscheduled and not now_unscheduled:
+                # Previously unscheduled → now has a time: treat as 'new'
+                detected.append({
+                    **_base(code, new_slot, ["new"]),
+                    "old_start": None, "old_end": None, "old_room": None,
+                    "new_start": new_start, "new_end": new_end,
+                    "new_room":  new_slot.get("room_name", ""),
+                })
+                continue
+
+            if not was_unscheduled and now_unscheduled:
+                # Had a time → now unscheduled (pulled from the grid)
+                detected.append({
+                    **_base(code, old_slot, ["unscheduled"]),
+                    "old_start": old_start, "old_end": old_end,
+                    "old_room":  old_slot.get("room_name", ""),
+                    "new_start": None, "new_end": None, "new_room": None,
+                })
+                continue
+
+            if was_unscheduled and now_unscheduled:
+                continue  # still unscheduled — nothing to report
+
+            # ── Both slots have times — check for reschedule/room changes ─────
+            change_types = []
 
             if old_start[:10] != new_start[:10]:
                 change_types.append("day")

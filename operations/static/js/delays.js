@@ -399,18 +399,20 @@
     // -------------------------------------------------------------------------
 
     const CHANGE_TYPE_LABELS = {
-        new:       'New Event',
-        cancelled: 'Cancelled',
-        day:       'Day moved',
-        time:      'Time changed',
-        room:      'Room changed',
+        new:         'New Event',
+        cancelled:   'Cancelled',
+        unscheduled: 'Unscheduled',
+        day:         'Day moved',
+        time:        'Time changed',
+        room:        'Room changed',
     };
     const CHANGE_TYPE_ICONS = {
-        new:       '✨',
-        cancelled: '❌',
-        day:       '📅',
-        time:      '🕒',
-        room:      '🚶',
+        new:         '✨',
+        cancelled:   '❌',
+        unscheduled: '🗓️',
+        day:         '📅',
+        time:        '🕒',
+        room:        '🚶',
     };
 
     function renderChanges() {
@@ -435,13 +437,16 @@
     }
 
     function makeChangeCard(chg) {
-        const isNew       = chg.change_types?.includes('new');
-        const isCancelled = chg.change_types?.includes('cancelled');
+        const isNew          = chg.change_types?.includes('new');
+        const isCancelled    = chg.change_types?.includes('cancelled');
+        const isUnscheduled  = chg.change_types?.includes('unscheduled');
+        const isStatusChange = isNew || isCancelled || isUnscheduled;
 
         const card = el('div', {
             cls: 'changes-card'
-                + (isNew       ? ' changes-card-new'       : '')
-                + (isCancelled ? ' changes-card-cancelled' : ''),
+                + (isNew         ? ' changes-card-new'         : '')
+                + (isCancelled   ? ' changes-card-cancelled'   : '')
+                + (isUnscheduled ? ' changes-card-unscheduled' : ''),
             'data-id': String(chg.id),
         });
 
@@ -452,10 +457,15 @@
 
         const inner = el('div', { cls: 'changes-card-inner' });
 
-        // ── New / Cancelled banner (replaces version row for those types) ──
-        if (isNew || isCancelled) {
-            const banner = el('div', { cls: 'changes-status-banner changes-banner-' + (isNew ? 'new' : 'cancelled') });
-            banner.textContent = isNew ? '✨ New Event' : '❌ Cancelled';
+        // ── Status banner or version row ──
+        if (isStatusChange) {
+            const banner = el('div', {
+                cls: 'changes-status-banner changes-banner-'
+                    + (isNew ? 'new' : isCancelled ? 'cancelled' : 'unscheduled'),
+            });
+            banner.textContent = isNew         ? '✨ New Event'
+                                : isCancelled   ? '❌ Cancelled'
+                                :                 '🗓️ Unscheduled';
             inner.appendChild(banner);
         } else {
             // Version badge row for reschedules
@@ -515,11 +525,11 @@
             diff.appendChild(row);
         }
 
-        // Show available slot info (old for cancelled, new for new, both for reschedules)
+        // Show available slot info (old for cancelled/unscheduled, new for new, both for reschedules)
         const hasOld = chg.old_start || chg.old_room;
         const hasNew = chg.new_start || chg.new_room;
 
-        if (isCancelled && hasOld) {
+        if ((isCancelled || isUnscheduled) && hasOld) {
             diffRow('Time', fmtDate(chg.old_start) + ' ' + fmtTimeRange(chg.old_start, chg.old_end), null);
             if (chg.old_room) diffRow('Room', chg.old_room, null);
         } else if (isNew && hasNew) {

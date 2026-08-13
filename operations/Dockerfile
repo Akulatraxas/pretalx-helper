@@ -13,7 +13,7 @@ COPY pretalx_client.py .
 COPY fonts/ static/fonts/
 
 # Copy application code
-COPY app.py db.py auth.py pretalx_cache.py models.py .
+COPY app.py db.py auth.py pretalx_cache.py models.py announcements.py .
 COPY templates/ templates/
 COPY static/ static/
 

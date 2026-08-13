@@ -19,6 +19,7 @@ from flask import (
 import db
 import auth
 import pretalx_cache
+import announcements
 from db import DEPARTMENTS
 
 # ---------------------------------------------------------------------------
@@ -157,7 +158,7 @@ def api_debug_headers():
 # API — Pretalx cache
 # ---------------------------------------------------------------------------
 
-@app.route(f"{BASE_PATH}/api/refresh", methods=["POST"])
+@app.route(f"{BASE_PATH}/api/refresh", methods=["POST","GET"])
 @auth.require_write
 def api_refresh():
     pretalx_cache.trigger_refresh()
@@ -997,7 +998,42 @@ def api_slot_set_delay(code, slot_index):
     comment = (data.get("comment") or "").strip() or None
     db.upsert_delay(code, slot_index, minutes, comment,
                     user_email=g.user.get("email"))
-    return jsonify({"ok": True, "delay_minutes": minutes, "comment": comment})
+
+    # Dispatch announcement — enrich with slot data from cache
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    try:
+        event_tz = ZoneInfo(EVENT_TIMEZONE)
+    except ZoneInfoNotFoundError:
+        event_tz = None
+
+    cache = pretalx_cache.get_cache()
+    slot_info = {}
+    if cache:
+        sub = cache.get("submissions_map", {}).get(code, {})
+        slot_info["title"] = sub.get("title", code)
+        for sl in cache.get("slots_flat", []):
+            if sl.get("submission_code") == code and sl.get("slot_index", 0) == slot_index:
+                slot_info["start"] = sl.get("start")
+                slot_info["room"]  = sl.get("room_name")
+                break
+    else:
+        slot_info["title"] = code
+
+    dispatch_result = announcements.dispatch_delay(
+        title=slot_info.get("title", code),
+        minutes=minutes,
+        comment=comment,
+        start=slot_info.get("start"),
+        room=slot_info.get("room"),
+        tz=event_tz,
+    )
+
+    return jsonify({
+        "ok": True,
+        "delay_minutes": minutes,
+        "comment": comment,
+        "announce": dispatch_result.to_dict(),
+    })
 
 
 @app.route(
@@ -1042,13 +1078,45 @@ def api_changes():
 @auth.require_write
 def api_change_send(change_id):
     """
-    Mark a change as 'sent' (announcement placeholder — implementation TBD).
+    Mark a change as 'sent' and dispatch announcement to all channels.
     """
+    # Fetch the change row first so we can format the announcement
+    change = db.get_change_by_id(change_id)
+    if change is None or change.get("status") != "pending":
+        return jsonify({"error": "Change not found or already actioned"}), 404
+
     ok = db.action_change(change_id, "sent", user_email=g.user.get("email"))
     if not ok:
         return jsonify({"error": "Change not found or already actioned"}), 404
-    # TODO: trigger actual announcement when announcement system is ready
-    return jsonify({"ok": True, "status": "sent"})
+
+    # Enrich with submission title from cache
+    cache = pretalx_cache.get_cache()
+    sub = (cache or {}).get("submissions_map", {}).get(change["submission_code"], {})
+    title = sub.get("title", change["submission_code"])
+
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    try:
+        event_tz = ZoneInfo(EVENT_TIMEZONE)
+    except ZoneInfoNotFoundError:
+        event_tz = None
+
+    dispatch_result = announcements.dispatch_change(
+        title=title,
+        change_types=change["change_types"],
+        old_start=change.get("old_start"),
+        old_end=change.get("old_end"),
+        old_room=change.get("old_room"),
+        new_start=change.get("new_start"),
+        new_end=change.get("new_end"),
+        new_room=change.get("new_room"),
+        tz=event_tz,
+    )
+
+    return jsonify({
+        "ok": True,
+        "status": "sent",
+        "announce": dispatch_result.to_dict(),
+    })
 
 
 @app.route(f"{BASE_PATH}/api/changes/<int:change_id>/discard", methods=["POST"])

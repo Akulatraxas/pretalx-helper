@@ -1014,6 +1014,7 @@ def api_slot_set_delay(code, slot_index):
         for sl in cache.get("slots_flat", []):
             if sl.get("submission_code") == code and sl.get("slot_index", 0) == slot_index:
                 slot_info["start"] = sl.get("start")
+                slot_info["end"]   = sl.get("end")
                 slot_info["room"]  = sl.get("room_name")
                 break
     else:
@@ -1024,6 +1025,7 @@ def api_slot_set_delay(code, slot_index):
         minutes=minutes,
         comment=comment,
         start=slot_info.get("start"),
+        end=slot_info.get("end"),
         room=slot_info.get("room"),
         tz=event_tz,
     )

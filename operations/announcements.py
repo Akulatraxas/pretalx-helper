@@ -94,6 +94,19 @@ def _fmt_day(iso_str, tz=None) -> str:
         return iso_str
 
 
+def _parse_dt_utc(iso_str):
+    """Parse an ISO datetime string and return a UTC-aware datetime, or None."""
+    if not iso_str:
+        return None
+    try:
+        dt = datetime.fromisoformat(iso_str)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
 def format_delay_announcement(
     title: str,
     minutes: int,
@@ -190,7 +203,7 @@ def format_change_announcement(
 class BaseChannel:
     name = "base"
 
-    def send(self, title: str, body: str, area: str) -> ChannelResult:
+    def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
         raise NotImplementedError
 
 
@@ -201,12 +214,13 @@ class BaseChannel:
 class LoggerChannel(BaseChannel):
     name = "logger"
 
-    def send(self, title: str, body: str, area: str) -> ChannelResult:
+    def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
         logger.info(
-            "[ANNOUNCE:%s] %s | %s",
+            "[ANNOUNCE:%s] %s | %s%s",
             area.upper(),
             title,
             body,
+            f" (expires: {expires_at.strftime('%Y-%m-%dT%H:%M:%SZ')})" if expires_at else "",
         )
         return ChannelResult(channel=self.name, ok=True)
 
@@ -232,7 +246,7 @@ class EFAppChannel(BaseChannel):
         self.token = token
         self.author = author
 
-    def send(self, title: str, body: str, area: str) -> ChannelResult:
+    def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
         try:
             import requests as _requests
         except ImportError:
@@ -244,11 +258,15 @@ class EFAppChannel(BaseChannel):
 
         ef_area = self.AREA_MAP.get(area, "announcement")
         now_utc = datetime.now(timezone.utc)
-        # Announcements are valid from now until end of the current UTC day
-        valid_until = now_utc.replace(hour=23, minute=59, second=59, microsecond=0)
-        if valid_until <= now_utc:
+
+        # Use slot expiry when available; fall back to end of current UTC day
+        if expires_at is not None:
+            valid_until = expires_at
+        else:
             from datetime import timedelta
-            valid_until = valid_until + timedelta(days=1)
+            valid_until = now_utc.replace(hour=23, minute=59, second=59, microsecond=0)
+            if valid_until <= now_utc:
+                valid_until = valid_until + timedelta(days=1)
 
         payload = {
             "ValidFromDateTimeUtc":  now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -312,7 +330,7 @@ class EFSchedBotChannel(BaseChannel):
         self.api_base = api_base.rstrip("/")
         self.token = token
 
-    def send(self, title: str, body: str, area: str) -> ChannelResult:
+    def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
         try:
             import requests as _requests
         except ImportError:
@@ -322,12 +340,12 @@ class EFSchedBotChannel(BaseChannel):
                 error="requests library not installed",
             )
 
-        from datetime import timedelta
         now_utc = datetime.now(timezone.utc)
 
         # short_text is capped at 255 chars — combine title + body into one concise string
         # If they fit together, use "Title: body"; otherwise just body (already descriptive)
-        combined = f"{title}: {body}" if len(f"{title}: {body}") <= 255 else body[:255]
+        #combined = f"{title}: {body}" if len(f"{title}: {body}") <= 255 else body[:255]
+        combined = f"{body}" if len(f"{body}") <= 255 else body[:255]
 
         payload = {
             "short_text":      combined,
@@ -337,6 +355,8 @@ class EFSchedBotChannel(BaseChannel):
             "status":          "pending",
             "scheduled_at":    now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
+        if expires_at is not None:
+            payload["expires_at"] = expires_at.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
         url = f"{self.api_base}/v1/notifications"
         headers = {
@@ -416,6 +436,7 @@ def dispatch_delay(
     minutes: int,
     comment=None,
     start=None,
+    end=None,
     room=None,
     tz=None,
 ) -> DispatchResult:
@@ -426,14 +447,23 @@ def dispatch_delay(
         title:   Submission title (event name)
         minutes: Delay in minutes
         comment: Optional staff comment
-        start:   ISO start time of the slot (for context)
+        start:   ISO start time of the slot (for display)
+        end:     ISO end time of the slot (used to compute expiry = end + minutes)
         room:    Room name (for context)
         tz:      ZoneInfo timezone object for formatting times (optional)
     """
+    from datetime import timedelta
     subject, body = format_delay_announcement(title, minutes, comment, start, room, tz)
+
+    # Expiry: slot end time + the delay itself (the event finishes that much later)
+    expires_at = None
+    end_dt = _parse_dt_utc(end)
+    if end_dt is not None:
+        expires_at = end_dt + timedelta(minutes=minutes)
+
     result = DispatchResult()
     for channel in _get_channels():
-        result.results.append(channel.send(subject, body, area="delay"))
+        result.results.append(channel.send(subject, body, area="delay", expires_at=expires_at))
     return result
 
 
@@ -452,6 +482,7 @@ def dispatch_change(
     Format and dispatch a schedule-change announcement across all channels.
 
     change_types: list of strings from ['new', 'cancelled', 'time', 'day', 'room']
+    Expiry is the latest of old_end / new_end (whichever exist).
     """
     types = set(change_types)
     if "new" in types:
@@ -467,7 +498,12 @@ def dispatch_change(
         new_start, new_end, new_room,
         tz,
     )
+
+    # Expiry: the later of old_end / new_end (cover both the old and new slot window)
+    candidates = [_parse_dt_utc(t) for t in (old_end, new_end) if t]
+    expires_at = max(candidates) if candidates else None
+
     result = DispatchResult()
     for channel in _get_channels():
-        result.results.append(channel.send(subject, body, area=area))
+        result.results.append(channel.send(subject, body, area=area, expires_at=expires_at))
     return result

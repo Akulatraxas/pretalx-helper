@@ -461,7 +461,7 @@ def _detect_changes(old_cache, new_cache):
             if not was_unscheduled and now_unscheduled:
                 # Had a time → now unscheduled (pulled from the grid)
                 detected.append({
-                    **_base(code, old_slot, ["unscheduled"]),
+                    **_base(code, old_slot, ["unscheduled","cancelled"]),
                     "old_start": old_start, "old_end": old_end,
                     "old_room":  old_slot.get("room_name", ""),
                     "new_start": None, "new_end": None, "new_room": None,

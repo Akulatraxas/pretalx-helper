@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Delays / Changes{% endblock %}
+
+{% block content %}
+<div class="page-delays">
+
+    <div class="page-header delays-page-header">
+        <div>
+            <h1 class="page-title">Delays &amp; Changes</h1>
+            <p class="page-subtitle">Track event delays and schedule changes in real time</p>
+        </div>
+        <div class="header-actions occ-controls">
+            <!-- Test mode -->
+            <label class="filter-toggle" title="Override reference time for testing">
+                <input type="checkbox" id="del-test-mode"> 🧪 Test
+            </label>
+            <input class="form-input form-input-sm hidden" type="datetime-local"
+                   id="del-test-at" title="Reference 'now' for test mode" aria-label="Test reference time"
+                   style="max-width:180px">
+
+            <button class="btn btn-ghost btn-sm" id="del-refresh-btn" title="Refresh feed">↻ Refresh</button>
+        </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="ops-status-bar" id="del-status-bar">
+        <span id="del-count-label">Loading…</span>
+        <span class="status-dot loading" id="del-live-dot" title="Auto-refreshes every 30 seconds"></span>
+        <span class="occ-test-badge hidden" id="del-test-badge">🧪 Test mode active</span>
+    </div>
+
+    <!-- Two-column layout -->
+    <div class="delays-columns">
+
+        <!-- ── Left column: Delay ── -->
+        <section class="delays-col" id="delays-col-delay">
+            <div class="delays-col-header">
+                <span class="delays-col-icon">⏱</span>
+                <span class="delays-col-title">Delay</span>
+                <span class="delays-col-subtitle">Events starting soon</span>
+            </div>
+            <div class="delays-event-list" id="del-list">
+                <div class="delays-placeholder" id="del-placeholder">
+                    <div class="loading-spinner"></div>
+                    Fetching events…
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Right column: Changes ── -->
+        <section class="delays-col" id="delays-col-changes">
+            <div class="delays-col-header">
+                <span class="delays-col-icon">🔄</span>
+                <span class="delays-col-title">Changes</span>
+                <span class="delays-col-subtitle">Detected schedule changes</span>
+            </div>
+            <div class="delays-event-list" id="del-changes-list">
+                <div class="delays-placeholder">
+                    <div class="loading-spinner"></div>
+                    Fetching changes…
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Delay modal -->
+    <div class="modal-overlay hidden" id="del-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="del-modal-title">
+        <div class="modal-panel delays-modal-panel">
+            <div class="modal-header">
+                <h2 class="modal-title" id="del-modal-title">Set Delay</h2>
+                <button class="modal-close" id="del-modal-close" aria-label="Close">✕</button>
+            </div>
+            <div class="modal-body" id="del-modal-body">
+                <div class="delays-modal-event-info" id="del-modal-event-info"></div>
+                <form id="del-modal-form" novalidate>
+                    <div class="form-row">
+                        <label class="form-label" for="del-minutes-input">Delay (minutes) <span class="required">*</span></label>
+                        <input class="form-input" type="number" id="del-minutes-input"
+                               min="1" max="1440" step="5" placeholder="e.g. 15"
+                               autocomplete="off">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label" for="del-comment-input">Comment <span class="form-label-optional">(optional)</span></label>
+                        <input class="form-input" type="text" id="del-comment-input"
+                               maxlength="200" placeholder="e.g. Speaker arriving late"
+                               autocomplete="off">
+                    </div>
+                    <div class="delays-modal-actions">
+                        <button type="submit" class="btn btn-primary" id="del-modal-save">Save Delay</button>
+                        <button type="button" class="btn btn-ghost" id="del-modal-cancel">Cancel</button>
+                        <button type="button" class="btn btn-danger btn-sm hidden" id="del-modal-clear">Clear Delay</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ base_path }}/static/js/delays.js"></script>
+{% endblock %}

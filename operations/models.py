@@ -116,3 +116,50 @@ slot_occupancy = Table(
 )
 
 Index("idx_slot_occupancy_code", slot_occupancy.c.submission_code)
+
+# Tracks per-slot delay information (minutes + optional comment) for the Delays tab.
+# Keyed by (submission_code, slot_index) — one row per slot; NULL minutes = no active delay.
+slot_delays = Table(
+    "slot_delays", metadata,
+    Column("id",               Integer, primary_key=True, autoincrement=True),
+    Column("submission_code",  Text,    nullable=False),
+    Column("slot_index",       Integer, nullable=False, server_default="0"),
+    Column("delay_minutes",    Integer, nullable=False),   # delay in minutes (positive = late start)
+    Column("comment",          Text,    nullable=True),    # optional free-text comment
+    Column("set_by",           Text,    nullable=True),    # email of staff who set it
+    Column("updated_at",       Text,    nullable=False,
+           server_default="(datetime('now'))"),
+    UniqueConstraint("submission_code", "slot_index", name="uq_slot_delays_code_slot"),
+)
+
+Index("idx_slot_delays_code", slot_delays.c.submission_code)
+
+# Tracks schedule changes detected between consecutive published versions.
+# Each row is one changed slot (time/room diff). Status: pending → sent | discarded.
+schedule_changes = Table(
+    "schedule_changes", metadata,
+    Column("id",               Integer, primary_key=True, autoincrement=True),
+    Column("submission_code",  Text,    nullable=False),
+    Column("slot_index",       Integer, nullable=False, server_default="0"),
+    Column("from_version",     Text,    nullable=False),   # previous schedule version
+    Column("to_version",       Text,    nullable=False),   # new schedule version
+    Column("change_types",     Text,    nullable=False),   # comma-separated: time,room,day
+    # "before" snapshot
+    Column("old_start",        Text,    nullable=True),
+    Column("old_end",          Text,    nullable=True),
+    Column("old_room",         Text,    nullable=True),
+    # "after" snapshot
+    Column("new_start",        Text,    nullable=True),
+    Column("new_end",          Text,    nullable=True),
+    Column("new_room",         Text,    nullable=True),
+    # lifecycle
+    Column("status",           Text,    nullable=False, server_default="'pending'"),  # pending|sent|discarded
+    Column("actioned_by",      Text,    nullable=True),
+    Column("detected_at",      Text,    nullable=False,
+           server_default="(datetime('now'))"),
+    Column("actioned_at",      Text,    nullable=True),
+)
+
+Index("idx_schedule_changes_code",   schedule_changes.c.submission_code)
+Index("idx_schedule_changes_status", schedule_changes.c.status)
+

@@ -13,7 +13,7 @@ COPY pretalx_client.py .
 COPY fonts/ static/fonts/
 
 # Copy application code
-COPY app.py db.py auth.py pretalx_cache.py models.py .
+COPY app.py db.py auth.py pretalx_cache.py models.py announcements.py .
 COPY templates/ templates/
 COPY static/ static/
 
@@ -32,4 +32,4 @@ EXPOSE 8090
 # Run Alembic migrations then start gunicorn.
 # Using a single worker + threads because SQLite WAL handles concurrent reads
 # well, but write serialisation happens at the DB level anyway.
-CMD ["sh", "-c", "alembic upgrade head && gunicorn --bind 0.0.0.0:8090 --workers 2 --threads 4 --timeout 120 app:app"]
+CMD ["sh", "-c", "alembic upgrade head && gunicorn --bind 0.0.0.0:8090 --workers 1 --threads 4 --timeout 120 --log-level info --capture-output app:app"]

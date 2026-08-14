@@ -14,4 +14,4 @@ COPY static/ static/
 
 EXPOSE 8089
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8089", "--workers", "2", "--timeout", "120", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8089", "--workers", "2", "--timeout", "120", "--log-level", "info", "--capture-output", "app:app"]

@@ -523,7 +523,18 @@ def get_occupancy_for_codes(codes):
 
 
 def upsert_occupancy(submission_code, slot_index, rating, user_email=None):
-    """Insert or update the occupancy rating for a slot."""
+    """
+    Insert or update the occupancy rating for a slot.
+    
+    Parameters:
+    	submission_code: The submission code associated with the slot.
+    	slot_index: The slot's index.
+    	rating: The occupancy rating, which must be one of the supported ratings.
+    	user_email: The email address of the user submitting the rating.
+    
+    Raises:
+    	ValueError: If the rating is not supported.
+    """
     if rating not in OCCUPANCY_RATINGS:
         raise ValueError(f"Invalid rating {rating!r}; must be one of {OCCUPANCY_RATINGS}")
     with engine.begin() as conn:
@@ -542,4 +553,206 @@ def upsert_occupancy(submission_code, slot_index, rating, user_email=None):
         })
         _audit(conn, user_email, "rate_occupancy",
                f"code={submission_code} slot={slot_index} rating={rating}")
+
+
+# ---------------------------------------------------------------------------
+# Slot delays (set delay / clear delay)
+# ---------------------------------------------------------------------------
+
+def get_delays_for_codes(codes):
+    """
+    Return a dict keyed by (submission_code, slot_index) for all matching codes.
+    Used to annotate the delays feed in bulk.
+    """
+    if not codes:
+        return {}
+    placeholders = ", ".join(f":c{i}" for i in range(len(codes)))
+    params = {f"c{i}": c for i, c in enumerate(codes)}
+    with engine.connect() as conn:
+        rows = conn.execute(text(f"""
+            SELECT submission_code, slot_index, delay_minutes, comment, set_by, updated_at
+            FROM slot_delays
+            WHERE submission_code IN ({placeholders})
+        """), params).fetchall()
+    result = {}
+    for row in rows:
+        r = _to_dict(row)
+        result[(r["submission_code"], r["slot_index"])] = r
+    return result
+
+
+def get_all_active_delays():
+    """Return all rows in slot_delays, ordered by updated_at desc."""
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT submission_code, slot_index, delay_minutes, comment, set_by, updated_at
+            FROM slot_delays
+            ORDER BY updated_at DESC
+        """)).fetchall()
+    return [_to_dict(r) for r in rows]
+
+
+def upsert_delay(submission_code, slot_index, delay_minutes, comment, user_email=None):
+    """
+    Insert or update the delay recorded for a submission slot.
+    
+    Parameters:
+    	submission_code: The submission code identifying the slot's submission.
+    	slot_index: The index of the slot.
+    	delay_minutes: The delay duration in minutes.
+    	comment: An optional comment describing the delay.
+    	user_email: The optional email address of the user setting the delay.
+    """
+    with engine.begin() as conn:
+        conn.execute(text("""
+            INSERT INTO slot_delays (submission_code, slot_index, delay_minutes, comment, set_by, updated_at)
+            VALUES (:code, :idx, :minutes, :comment, :set_by, datetime('now'))
+            ON CONFLICT(submission_code, slot_index) DO UPDATE SET
+                delay_minutes = excluded.delay_minutes,
+                comment       = excluded.comment,
+                set_by        = excluded.set_by,
+                updated_at    = excluded.updated_at
+        """), {
+            "code":    submission_code,
+            "idx":     slot_index,
+            "minutes": int(delay_minutes),
+            "comment": comment or None,
+            "set_by":  user_email or None,
+        })
+        _audit(conn, user_email, "set_delay",
+               f"code={submission_code} slot={slot_index} minutes={delay_minutes}")
+
+
+def clear_delay(submission_code, slot_index, user_email=None):
+    """Remove a delay record for a slot."""
+    with engine.begin() as conn:
+        conn.execute(text("""
+            DELETE FROM slot_delays
+            WHERE submission_code = :code AND slot_index = :idx
+        """), {"code": submission_code, "idx": slot_index})
+        _audit(conn, user_email, "clear_delay",
+               f"code={submission_code} slot={slot_index}")
+
+
+# ---------------------------------------------------------------------------
+# Schedule changes (detected on version bump)
+# ---------------------------------------------------------------------------
+
+CHANGE_STATUSES = ["pending", "sent", "discarded"]
+
+
+def insert_schedule_changes(changes):
+    """
+    Insert detected schedule changes as pending records.
+    
+    Parameters:
+    	changes (list[dict]): Change records containing submission and slot identifiers, version values, change types, and the previous and updated schedule details.
+    """
+    if not changes:
+        return
+    with engine.begin() as conn:
+        for c in changes:
+            conn.execute(text("""
+                INSERT INTO schedule_changes
+                    (submission_code, slot_index, from_version, to_version,
+                     change_types,
+                     old_start, old_end, old_room,
+                     new_start, new_end, new_room,
+                     status)
+                VALUES
+                    (:code, :idx, :from_v, :to_v,
+                     :ctypes,
+                     :old_start, :old_end, :old_room,
+                     :new_start, :new_end, :new_room,
+                     'pending')
+            """), {
+                "code":      c["submission_code"],
+                "idx":       c["slot_index"],
+                "from_v":    c["from_version"],
+                "to_v":      c["to_version"],
+                "ctypes":    ",".join(c.get("change_types", [])),
+                "old_start": c.get("old_start"),
+                "old_end":   c.get("old_end"),
+                "old_room":  c.get("old_room"),
+                "new_start": c.get("new_start"),
+                "new_end":   c.get("new_end"),
+                "new_room":  c.get("new_room"),
+            })
+
+
+def get_pending_changes():
+    """Return all schedule_changes rows with status='pending', newest first."""
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT id, submission_code, slot_index, from_version, to_version,
+                   change_types,
+                   old_start, old_end, old_room,
+                   new_start, new_end, new_room,
+                   status, actioned_by, detected_at, actioned_at
+            FROM schedule_changes
+            WHERE status = 'pending'
+            ORDER BY detected_at DESC
+        """)).fetchall()
+    result = []
+    for row in rows:
+        r = _to_dict(row)
+        r["change_types"] = [t for t in r["change_types"].split(",") if t]
+        result.append(r)
+    return result
+
+
+def get_change_by_id(change_id):
+    """
+    Retrieve a schedule change by its identifier.
+    
+    Parameters:
+        change_id: The schedule change identifier.
+    
+    Returns:
+        The schedule change as a dictionary, with ``change_types`` represented as a list, or ``None`` if no matching record exists.
+    """
+    with engine.connect() as conn:
+        row = conn.execute(text("""
+            SELECT id, submission_code, slot_index, from_version, to_version,
+                   change_types,
+                   old_start, old_end, old_room,
+                   new_start, new_end, new_room,
+                   status, actioned_by, detected_at, actioned_at
+            FROM schedule_changes
+            WHERE id = :id
+        """), {"id": change_id}).fetchone()
+    if row is None:
+        return None
+    r = _to_dict(row)
+    r["change_types"] = [t for t in r["change_types"].split(",") if t]
+    return r
+
+
+def action_change(change_id, action, user_email=None):
+    """
+    Apply a valid action to a pending schedule change.
+    
+    Parameters:
+    	change_id: The schedule change identifier.
+    	action: The action to apply, either `"sent"` or `"discarded"`.
+    	user_email: The email address of the user performing the action.
+    
+    Returns:
+    	bool: `true` if the pending change was updated, `false` if it was not found or had already transitioned.
+    """
+    if action not in ("sent", "discarded"):
+        raise ValueError(f"Invalid action {action!r}")
+    with engine.begin() as conn:
+        result = conn.execute(text("""
+            UPDATE schedule_changes
+            SET status      = :status,
+                actioned_by = :by,
+                actioned_at = datetime('now')
+            WHERE id = :id AND status = 'pending'
+        """), {"status": action, "by": user_email or None, "id": change_id})
+        affected = result.rowcount
+        if affected:
+            _audit(conn, user_email, f"change_{action}",
+                   f"schedule_change_id={change_id}")
+    return affected > 0
 

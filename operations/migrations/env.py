@@ -28,7 +28,7 @@ from models import metadata as target_metadata  # noqa: E402
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # Override the sqlalchemy.url with the value from the environment.
 DB_PATH = os.environ.get("DB_PATH", "/data/operations.db")

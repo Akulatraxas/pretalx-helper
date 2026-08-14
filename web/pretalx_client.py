@@ -503,20 +503,17 @@ class PretalxClient:
 
     def copy_submission(self, event_slug, code, title=None, duration=None, slot_count=None):
         """
-        Copies a submission by its code.
-        Copies the title, submission_type, track, tags, duration, abstract,
-        description, notes, internal_notes, and content_locale if they exist.
-        Allows optionally overriding title, duration, and slot_count.
+        Create a new submission by copying selected fields from an existing submission.
         
-        Args:
-            event_slug (str): The short slug identifying the event.
-            code (str): The unique alphanumeric code of the submission to copy.
-            title (str, optional): Override the title for the new submission.
-            duration (int, optional): Override the duration (in minutes) for the new submission.
-            slot_count (int, optional): Override the slot count for the new submission.
-            
+        Parameters:
+        	event_slug (str): The event slug.
+        	code (str): The code of the submission to copy.
+        	title (str, optional): Replacement title for the new submission.
+        	duration (int, optional): Replacement duration in minutes.
+        	slot_count (int, optional): Replacement number of slots.
+        
         Returns:
-            tuple: (dict representing new submission, URL string to the created submission in orga view)
+        	tuple: The created submission and its organiser dashboard URL.
         """
         # Fetch the source submission
         source = self.get_submission(event_slug, code)
@@ -573,6 +570,69 @@ class PretalxClient:
         orga_url = f"{self.site_url}/orga/event/{event_slug}/submissions/{new_code}/"
         
         return new_sub, orga_url
+
+    def update_submission_tags(self, event_slug, code, tags, partial=True):
+        """
+        Update a submission's tags while preserving its other attributes.
+        
+        Parameters:
+            event_slug (str): Short identifier for the event.
+            code (str): Submission code.
+            tags (list): Tag IDs or tag objects to assign.
+            partial (bool): Whether to use a partial update. Defaults to True.
+        
+        Returns:
+            dict: The updated submission details.
+        """
+        tag_ids = [t["id"] if isinstance(t, dict) and "id" in t else t for t in tags]
+        return self.update_submission(event_slug, code, {"tags": tag_ids}, partial=partial)
+
+    def add_submission_tag(self, event_slug, code, tag_id, current_tags=None):
+        """
+        Add a tag to a submission while preserving its existing tags.
+        
+        Parameters:
+        	event_slug (str): Short slug identifying the event.
+        	code (str): Alphanumeric submission code.
+        	tag_id (int or dict): Tag ID or tag object to add.
+        	current_tags (list, optional): Existing submission tags when already available.
+        
+        Returns:
+        	dict: The updated submission details, or the existing tag data when the tag is already present.
+        """
+        tid = tag_id["id"] if isinstance(tag_id, dict) and "id" in tag_id else tag_id
+        if current_tags is None:
+            sub = self.get_submission(event_slug, code)
+            current_tags = sub.get("tags", [])
+        existing_ids = [t["id"] if isinstance(t, dict) and "id" in t else t for t in current_tags]
+        if tid not in existing_ids:
+            existing_ids.append(tid)
+            return self.update_submission_tags(event_slug, code, existing_ids)
+        return sub if sub is not None else {"code": code, "tags": existing_ids}
+
+    def remove_submission_tag(self, event_slug, code, tag_id, current_tags=None):
+        """
+        Remove a tag from a submission while preserving its other tags.
+        
+        Args:
+            event_slug (str): Short slug identifying the event.
+            code (str): Submission code.
+            tag_id (int or dict): Tag ID or tag object to remove.
+            current_tags (list, optional): Existing submission tags, when already available.
+        
+        Returns:
+            dict: Updated submission details, or the submission's existing tag data when the tag is absent.
+        """
+        tid = tag_id["id"] if isinstance(tag_id, dict) and "id" in tag_id else tag_id
+        if current_tags is None:
+            sub = self.get_submission(event_slug, code)
+            current_tags = sub.get("tags", [])
+        existing_ids = [t["id"] if isinstance(t, dict) and "id" in t else t for t in current_tags]
+        if tid in existing_ids:
+            existing_ids.remove(tid)
+            return self.update_submission_tags(event_slug, code, existing_ids)
+        return sub if isinstance(current_tags[0] if current_tags else None, dict) else {"code": code, "tags": existing_ids}
+
 
     # --- Rooms Endpoints ---
 
@@ -635,6 +695,49 @@ class PretalxClient:
             dict: The created tag details.
         """
         return self._request("POST", f"/events/{event_slug}/tags/", data=data)
+
+    def get_tag(self, event_slug, tag_id):
+        """
+        Retrieve a tag by its unique identifier.
+        
+        Parameters:
+        	event_slug (str): The slug identifying the event.
+        	tag_id (int): The tag's unique identifier.
+        
+        Returns:
+        	dict: The tag details.
+        """
+        return self._request("GET", f"/events/{event_slug}/tags/{tag_id}/")
+
+    def find_tag(self, event_slug, name_or_id):
+        """
+        Finds an event tag by numeric ID or case-insensitive name.
+        
+        Parameters:
+        	event_slug (str): The short slug identifying the event.
+        	name_or_id (int or str): The tag ID or name to search for.
+        
+        Returns:
+        	dict or None: The matching tag, or None if no tag matches.
+        """
+        if isinstance(name_or_id, int) or (isinstance(name_or_id, str) and name_or_id.isdigit()):
+            tag_id = int(name_or_id)
+            try:
+                return self.get_tag(event_slug, tag_id)
+            except PretalxNotFoundError:
+                pass
+        target_str = str(name_or_id).strip().lower()
+        for tag in self.list_tags(event_slug):
+            if tag.get("id") == name_or_id:
+                return tag
+            tag_text = tag.get("tag")
+            if isinstance(tag_text, str) and tag_text.lower() == target_str:
+                return tag
+            elif isinstance(tag_text, dict):
+                for val in tag_text.values():
+                    if str(val).lower() == target_str:
+                        return tag
+        return None
 
     # --- Tracks Endpoints ---
 
@@ -779,18 +882,106 @@ class PretalxClient:
         """
         return self._request("POST", f"/events/{event_slug}/questions/", data=data)
 
+    def get_question(self, event_slug, question_id, expand=None):
+        """
+        Retrieve a question by its identifier.
+        
+        Parameters:
+            event_slug (str): The slug identifying the event.
+            question_id (int or str): The question's numeric ID or string identifier.
+            expand (list, optional): Fields to include in the response, such as ``options``, ``submission_types``, or ``tracks``.
+        
+        Returns:
+            dict: The question details.
+        """
+        params = {}
+        if expand is not None:
+            params["expand"] = expand
+        return self._request("GET", f"/events/{event_slug}/questions/{question_id}/", params=params)
+
+    def find_question(self, event_slug, text_or_id):
+        """
+        Finds a question by ID, identifier, or question text.
+        
+        Parameters:
+        	event_slug (str): The short slug identifying the event.
+        	text_or_id (int or str): The question ID, identifier, or text to match.
+        
+        Returns:
+        	dict or None: The matching question, or None if no question matches.
+        """
+        if isinstance(text_or_id, int) or (isinstance(text_or_id, str) and text_or_id.isdigit()):
+            q_id = int(text_or_id)
+            try:
+                return self.get_question(event_slug, q_id)
+            except PretalxNotFoundError:
+                pass
+        target_str = str(text_or_id).strip().lower()
+        for q in self.list_questions(event_slug):
+            if q.get("id") == text_or_id or str(q.get("identifier", "")).lower() == target_str:
+                return q
+            q_text = q.get("question")
+            if isinstance(q_text, str) and q_text.lower() == target_str:
+                return q
+            elif isinstance(q_text, dict):
+                for val in q_text.values():
+                    if str(val).lower() == target_str:
+                        return q
+        return None
+
+    # --- Answers Endpoints ---
+
+    def list_answers(self, event_slug, question=None, submission=None, speaker=None, q=None):
+        """
+        List answers associated with an event, optionally filtered by question, submission, speaker, or answer text.
+        
+        Parameters:
+        	event_slug (str): The short identifier of the event.
+        	question (int or str, optional): Filter by question ID or identifier.
+        	submission (str, optional): Filter by submission code.
+        	speaker (str, optional): Filter by speaker code.
+        	q (str, optional): Search answer text.
+        
+        Returns:
+        	generator: An iterator yielding answer dictionaries.
+        """
+        params = {}
+        if question is not None:
+            params["question"] = question
+        if submission is not None:
+            params["submission"] = submission
+        if speaker is not None:
+            params["speaker"] = speaker
+        if q is not None:
+            params["q"] = q
+        return self._get_paginated(f"/events/{event_slug}/answers/", params=params)
+
+    def get_answer(self, event_slug, answer_id):
+        """
+        Retrieves detailed information for a specific answer by ID.
+        
+        Args:
+            event_slug (str): The short slug identifying the event.
+            answer_id (int): Unique integer ID of the answer.
+            
+        Returns:
+            dict: Answer details dictionary.
+        """
+        return self._request("GET", f"/events/{event_slug}/answers/{answer_id}/")
+
+
     # --- Speaker Information Endpoints ---
 
     def list_speaker_information(self, event_slug, q=None):
         """
-        Lists all speaker information entries of an event.
+        List speaker-information entries for an event.
         
-        Args:
+        Parameters:
             event_slug (str): The short slug identifying the event.
-            q (str, optional): Search term matching the title.
-            
+            q (str, optional): Search text used to filter entries.
+        
         Returns:
-            generator: Yields speaker information dictionaries.
+            generator: An iterator yielding speaker-information dictionaries.
         """
         params = {}
         if q is not None:

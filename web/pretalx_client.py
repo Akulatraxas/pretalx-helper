@@ -503,20 +503,17 @@ class PretalxClient:
 
     def copy_submission(self, event_slug, code, title=None, duration=None, slot_count=None):
         """
-        Copies a submission by its code.
-        Copies the title, submission_type, track, tags, duration, abstract,
-        description, notes, internal_notes, and content_locale if they exist.
-        Allows optionally overriding title, duration, and slot_count.
+        Create a new submission by copying selected fields from an existing submission.
         
-        Args:
-            event_slug (str): The short slug identifying the event.
-            code (str): The unique alphanumeric code of the submission to copy.
-            title (str, optional): Override the title for the new submission.
-            duration (int, optional): Override the duration (in minutes) for the new submission.
-            slot_count (int, optional): Override the slot count for the new submission.
-            
+        Parameters:
+        	event_slug (str): The event slug.
+        	code (str): The code of the submission to copy.
+        	title (str, optional): Replacement title for the new submission.
+        	duration (int, optional): Replacement duration in minutes.
+        	slot_count (int, optional): Replacement number of slots.
+        
         Returns:
-            tuple: (dict representing new submission, URL string to the created submission in orga view)
+        	tuple: The created submission and its organiser dashboard URL.
         """
         # Fetch the source submission
         source = self.get_submission(event_slug, code)
@@ -576,32 +573,32 @@ class PretalxClient:
 
     def update_submission_tags(self, event_slug, code, tags, partial=True):
         """
-        Updates the tags list of a submission while leaving all other submission attributes untouched.
+        Update a submission's tags while preserving its other attributes.
         
-        Args:
-            event_slug (str): Short slug identifying the event.
-            code (str): Alphanumeric code of the submission.
-            tags (list): List of tag IDs (int) or tag objects to set on the submission.
-            partial (bool, optional): If True (default), performs PATCH. Else PUT.
-            
+        Parameters:
+            event_slug (str): Short identifier for the event.
+            code (str): Submission code.
+            tags (list): Tag IDs or tag objects to assign.
+            partial (bool): Whether to use a partial update. Defaults to True.
+        
         Returns:
-            dict: The updated submission details dictionary.
+            dict: The updated submission details.
         """
         tag_ids = [t["id"] if isinstance(t, dict) and "id" in t else t for t in tags]
         return self.update_submission(event_slug, code, {"tags": tag_ids}, partial=partial)
 
     def add_submission_tag(self, event_slug, code, tag_id, current_tags=None):
         """
-        Adds a tag to a submission without modifying existing tags.
+        Add a tag to a submission while preserving its existing tags.
         
-        Args:
-            event_slug (str): Short slug identifying the event.
-            code (str): Alphanumeric code of the submission.
-            tag_id (int/dict): Tag ID or tag object to add.
-            current_tags (list, optional): Existing tags list if already fetched.
-            
+        Parameters:
+        	event_slug (str): Short slug identifying the event.
+        	code (str): Alphanumeric submission code.
+        	tag_id (int or dict): Tag ID or tag object to add.
+        	current_tags (list, optional): Existing submission tags when already available.
+        
         Returns:
-            dict: The updated submission details dictionary.
+        	dict: The updated submission details, or the existing tag data when the tag is already present.
         """
         tid = tag_id["id"] if isinstance(tag_id, dict) and "id" in tag_id else tag_id
         if current_tags is None:
@@ -615,16 +612,16 @@ class PretalxClient:
 
     def remove_submission_tag(self, event_slug, code, tag_id, current_tags=None):
         """
-        Removes a tag from a submission without modifying other existing tags.
+        Remove a tag from a submission while preserving its other tags.
         
         Args:
             event_slug (str): Short slug identifying the event.
-            code (str): Alphanumeric code of the submission.
-            tag_id (int/dict): Tag ID or tag object to remove.
-            current_tags (list, optional): Existing tags list if already fetched.
-            
+            code (str): Submission code.
+            tag_id (int or dict): Tag ID or tag object to remove.
+            current_tags (list, optional): Existing submission tags, when already available.
+        
         Returns:
-            dict: The updated submission details dictionary.
+            dict: Updated submission details, or the submission's existing tag data when the tag is absent.
         """
         tid = tag_id["id"] if isinstance(tag_id, dict) and "id" in tag_id else tag_id
         if current_tags is None:
@@ -701,27 +698,27 @@ class PretalxClient:
 
     def get_tag(self, event_slug, tag_id):
         """
-        Retrieves detailed information for a specific tag by ID.
+        Retrieve a tag by its unique identifier.
         
-        Args:
-            event_slug (str): The short slug identifying the event.
-            tag_id (int): Unique integer ID of the tag.
-            
+        Parameters:
+        	event_slug (str): The slug identifying the event.
+        	tag_id (int): The tag's unique identifier.
+        
         Returns:
-            dict: Detailed tag dictionary.
+        	dict: The tag details.
         """
         return self._request("GET", f"/events/{event_slug}/tags/{tag_id}/")
 
     def find_tag(self, event_slug, name_or_id):
         """
-        Finds a tag by integer ID or string name (case-insensitive).
+        Finds an event tag by numeric ID or case-insensitive name.
         
-        Args:
-            event_slug (str): The short slug identifying the event.
-            name_or_id (int/str): The tag ID or tag name string to look up.
-            
+        Parameters:
+        	event_slug (str): The short slug identifying the event.
+        	name_or_id (int or str): The tag ID or name to search for.
+        
         Returns:
-            dict or None: Tag dictionary if found, else None.
+        	dict or None: The matching tag, or None if no tag matches.
         """
         if isinstance(name_or_id, int) or (isinstance(name_or_id, str) and name_or_id.isdigit()):
             tag_id = int(name_or_id)
@@ -887,15 +884,15 @@ class PretalxClient:
 
     def get_question(self, event_slug, question_id, expand=None):
         """
-        Retrieves detailed information for a specific question by ID.
+        Retrieve a question by its identifier.
         
-        Args:
-            event_slug (str): The short slug identifying the event.
-            question_id (int/str): Unique integer ID or string ID of the question.
-            expand (list, optional): Select fields to expand ('options', 'submission_types', 'tracks').
-            
+        Parameters:
+            event_slug (str): The slug identifying the event.
+            question_id (int or str): The question's numeric ID or string identifier.
+            expand (list, optional): Fields to include in the response, such as ``options``, ``submission_types``, or ``tracks``.
+        
         Returns:
-            dict: Question details dictionary.
+            dict: The question details.
         """
         params = {}
         if expand is not None:
@@ -904,14 +901,14 @@ class PretalxClient:
 
     def find_question(self, event_slug, text_or_id):
         """
-        Finds a question by integer ID, string identifier, or question text (case-insensitive).
+        Finds a question by ID, identifier, or question text.
         
-        Args:
-            event_slug (str): The short slug identifying the event.
-            text_or_id (int/str): Question ID, identifier, or question text.
-            
+        Parameters:
+        	event_slug (str): The short slug identifying the event.
+        	text_or_id (int or str): The question ID, identifier, or text to match.
+        
         Returns:
-            dict or None: Question dictionary if found, else None.
+        	dict or None: The matching question, or None if no question matches.
         """
         if isinstance(text_or_id, int) or (isinstance(text_or_id, str) and text_or_id.isdigit()):
             q_id = int(text_or_id)
@@ -936,17 +933,17 @@ class PretalxClient:
 
     def list_answers(self, event_slug, question=None, submission=None, speaker=None, q=None):
         """
-        Lists answers to questions of an event.
+        List answers associated with an event, optionally filtered by question, submission, speaker, or answer text.
         
-        Args:
-            event_slug (str): The short slug identifying the event.
-            question (int/str, optional): Filter by question ID.
-            submission (str, optional): Filter by submission code.
-            speaker (str, optional): Filter by speaker code.
-            q (str, optional): Search term matching answer text.
-            
+        Parameters:
+        	event_slug (str): The short identifier of the event.
+        	question (int or str, optional): Filter by question ID or identifier.
+        	submission (str, optional): Filter by submission code.
+        	speaker (str, optional): Filter by speaker code.
+        	q (str, optional): Search answer text.
+        
         Returns:
-            generator: Yields answer dictionaries.
+        	generator: An iterator yielding answer dictionaries.
         """
         params = {}
         if question is not None:
@@ -977,14 +974,14 @@ class PretalxClient:
 
     def list_speaker_information(self, event_slug, q=None):
         """
-        Lists all speaker information entries of an event.
+        List speaker-information entries for an event.
         
-        Args:
+        Parameters:
             event_slug (str): The short slug identifying the event.
-            q (str, optional): Search term matching the title.
-            
+            q (str, optional): Search text used to filter entries.
+        
         Returns:
-            generator: Yields speaker information dictionaries.
+            generator: An iterator yielding speaker-information dictionaries.
         """
         params = {}
         if q is not None:

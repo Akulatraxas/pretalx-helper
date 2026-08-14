@@ -21,6 +21,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Create the schedule changes table and its supporting indexes."""
     op.execute(sa.text("""
         CREATE TABLE IF NOT EXISTS schedule_changes (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,6 +53,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove the schedule changes table and its associated indexes."""
     op.execute(sa.text("DROP INDEX IF EXISTS idx_schedule_changes_status"))
     op.execute(sa.text("DROP INDEX IF EXISTS idx_schedule_changes_code"))
     op.execute(sa.text("DROP TABLE IF EXISTS schedule_changes"))

@@ -21,6 +21,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Create the slot delays table and an index on submission codes."""
     op.execute(sa.text("""
         CREATE TABLE IF NOT EXISTS slot_delays (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,5 +42,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """
+    Remove the index and table used to store per-slot delay records.
+    """
     op.execute(sa.text("DROP INDEX IF EXISTS idx_slot_delays_code"))
     op.execute(sa.text("DROP TABLE IF EXISTS slot_delays"))

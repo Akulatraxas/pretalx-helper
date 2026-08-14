@@ -523,7 +523,18 @@ def get_occupancy_for_codes(codes):
 
 
 def upsert_occupancy(submission_code, slot_index, rating, user_email=None):
-    """Insert or update the occupancy rating for a slot."""
+    """
+    Insert or update the occupancy rating for a slot.
+    
+    Parameters:
+    	submission_code: The submission code associated with the slot.
+    	slot_index: The slot's index.
+    	rating: The occupancy rating, which must be one of the supported ratings.
+    	user_email: The email address of the user submitting the rating.
+    
+    Raises:
+    	ValueError: If the rating is not supported.
+    """
     if rating not in OCCUPANCY_RATINGS:
         raise ValueError(f"Invalid rating {rating!r}; must be one of {OCCUPANCY_RATINGS}")
     with engine.begin() as conn:
@@ -582,7 +593,16 @@ def get_all_active_delays():
 
 
 def upsert_delay(submission_code, slot_index, delay_minutes, comment, user_email=None):
-    """Insert or update a delay record for a slot."""
+    """
+    Insert or update the delay recorded for a submission slot.
+    
+    Parameters:
+    	submission_code: The submission code identifying the slot's submission.
+    	slot_index: The index of the slot.
+    	delay_minutes: The delay duration in minutes.
+    	comment: An optional comment describing the delay.
+    	user_email: The optional email address of the user setting the delay.
+    """
     with engine.begin() as conn:
         conn.execute(text("""
             INSERT INTO slot_delays (submission_code, slot_index, delay_minutes, comment, set_by, updated_at)
@@ -623,9 +643,10 @@ CHANGE_STATUSES = ["pending", "sent", "discarded"]
 
 def insert_schedule_changes(changes):
     """
-    Bulk-insert a list of detected changes.  Each item is a dict with:
-      submission_code, slot_index, from_version, to_version, change_types (list),
-      old_start, old_end, old_room, new_start, new_end, new_room
+    Insert detected schedule changes as pending records.
+    
+    Parameters:
+    	changes (list[dict]): Change records containing submission and slot identifiers, version values, change types, and the previous and updated schedule details.
     """
     if not changes:
         return
@@ -681,7 +702,15 @@ def get_pending_changes():
 
 
 def get_change_by_id(change_id):
-    """Return a single schedule_change row as a dict, or None if not found."""
+    """
+    Retrieve a schedule change by its identifier.
+    
+    Parameters:
+        change_id: The schedule change identifier.
+    
+    Returns:
+        The schedule change as a dictionary, with ``change_types`` represented as a list, or ``None`` if no matching record exists.
+    """
     with engine.connect() as conn:
         row = conn.execute(text("""
             SELECT id, submission_code, slot_index, from_version, to_version,
@@ -701,8 +730,15 @@ def get_change_by_id(change_id):
 
 def action_change(change_id, action, user_email=None):
     """
-    Transition a schedule_change to 'sent' or 'discarded'.
-    Returns False if the row was not found or not in pending state.
+    Apply a valid action to a pending schedule change.
+    
+    Parameters:
+    	change_id: The schedule change identifier.
+    	action: The action to apply, either `"sent"` or `"discarded"`.
+    	user_email: The email address of the user performing the action.
+    
+    Returns:
+    	bool: `true` if the pending change was updated, `false` if it was not found or had already transitioned.
     """
     if action not in ("sent", "discarded"):
         raise ValueError(f"Invalid action {action!r}")

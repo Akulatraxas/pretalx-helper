@@ -51,7 +51,10 @@
 
     // -------------------------------------------------------------------------
     // Load data
-    // -------------------------------------------------------------------------
+    /**
+     * Loads the delay and pending-change feeds and updates their displays.
+     * Displays an error state when either feed fails to load.
+     */
 
     async function load() {
         if (liveDot) liveDot.className = 'status-dot loading';
@@ -102,7 +105,9 @@
 
     // -------------------------------------------------------------------------
     // Render event list
-    // -------------------------------------------------------------------------
+    /**
+     * Renders the current event slots in the event list.
+     */
 
     function render() {
         list.textContent = '';
@@ -121,7 +126,11 @@
 
     // -------------------------------------------------------------------------
     // Build one event card  (usage-event-card style + delay badge + action btn)
-    // -------------------------------------------------------------------------
+    /**
+     * Builds a display card for an event slot, including its schedule, speakers, delay details, and available actions.
+     * @param {Object} slot - Event slot data used to populate the card.
+     * @return {HTMLElement} The rendered event card.
+     */
 
     function makeCard(slot) {
         const hasDelay  = slot.delay_minutes != null;
@@ -229,7 +238,10 @@
 
     // -------------------------------------------------------------------------
     // Modal — open / close / submit
-    // -------------------------------------------------------------------------
+    /**
+     * Opens the delay modal for an event slot and populates its current delay details.
+     * @param {Object} slot - The event slot to edit.
+     */
 
     function openModal(slot) {
         modalSlot = slot;
@@ -266,6 +278,9 @@
         minutesInput?.focus();
     }
 
+    /**
+     * Closes the delay modal and resumes automatic refresh scheduling.
+     */
     function closeModal() {
         modalOverlay?.classList.add('hidden');
         document.body.style.overflow = '';
@@ -273,6 +288,10 @@
         scheduleRefresh();
     }
 
+    /**
+     * Saves the delay entered for the active event slot.
+     * @param {SubmitEvent} e - The form submission event.
+     */
     async function submitDelay(e) {
         e.preventDefault();
         if (!modalSlot) return;
@@ -303,6 +322,9 @@
         }
     }
 
+    /**
+     * Clears the delay for the active event slot.
+     */
     async function clearDelay() {
         if (!modalSlot) return;
 
@@ -372,7 +394,10 @@
 
     // -------------------------------------------------------------------------
     // Auto-refresh (paused while modal is open)
-    // -------------------------------------------------------------------------
+    /**
+     * Schedules the next automatic data refresh unless test mode is active.
+     * Defers the refresh while the delay modal is open.
+     */
 
     function scheduleRefresh() {
         clearTimeout(autoTimer);
@@ -415,6 +440,9 @@
         room:        '🚶',
     };
 
+    /**
+     * Renders the current pending changes in the changes list.
+     */
     function renderChanges() {
         if (!changesList) return;
         changesList.textContent = '';
@@ -436,6 +464,11 @@
         }
     }
 
+    /**
+     * Builds a card displaying a pending event change and its before-and-after details.
+     * @param {Object} chg - The pending change data used to populate the card.
+     * @returns {HTMLElement} The rendered change card element.
+     */
     function makeChangeCard(chg) {
         const isNew          = chg.change_types?.includes('new');
         const isCancelled    = chg.change_types?.includes('cancelled');
@@ -570,6 +603,12 @@
         return card;
     }
 
+    /**
+     * Sends or discards a pending change and refreshes the changes feed after success.
+     * @param {Object} chg - The pending change to process.
+     * @param {string} action - The action to apply to the change.
+     * @param {HTMLElement} cardEl - The change card whose controls are managed.
+     */
     async function actionChange(chg, action, cardEl) {
         const btns = cardEl.querySelectorAll('button');
         btns.forEach(b => { b.disabled = true; });

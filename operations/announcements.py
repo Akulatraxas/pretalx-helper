@@ -43,9 +43,20 @@ class DispatchResult:
 
     @property
     def all_ok(self) -> bool:
+        """Indicates whether every channel dispatch succeeded.
+        
+        Returns:
+        	bool: `true` if all channel results are successful, `false` otherwise.
+        """
         return all(r.ok for r in self.results)
 
     def to_dict(self) -> dict:
+        """
+        Serialize the dispatch outcome and individual channel results.
+        
+        Returns:
+        	dict: A mapping containing the overall success status and serialized channel results.
+        """
         return {
             "all_ok": self.all_ok,
             "channels": [
@@ -65,7 +76,16 @@ class DispatchResult:
 # ---------------------------------------------------------------------------
 
 def _fmt_time(iso_str, tz=None) -> str:
-    """Return a human-readable HH:MM from an ISO timestamp."""
+    """
+    Format an ISO timestamp as a local time in `HH:MM` format.
+    
+    Parameters:
+    	iso_str (str): ISO timestamp to format.
+    	tz: Optional timezone for conversion; naive timestamps are interpreted as UTC when provided.
+    
+    Returns:
+    	str: Formatted time, `"unknown time"` for missing input, or the original value if parsing fails.
+    """
     if not iso_str:
         return "unknown time"
     try:
@@ -80,7 +100,16 @@ def _fmt_time(iso_str, tz=None) -> str:
 
 
 def _fmt_day(iso_str, tz=None) -> str:
-    """Return a human-readable weekday + date string."""
+    """
+    Format an ISO timestamp as a weekday and date.
+    
+    Parameters:
+        iso_str (str): ISO-formatted timestamp to format.
+        tz: Optional timezone for converting the timestamp.
+    
+    Returns:
+        str: Formatted weekday and date, ``"unknown day"`` for missing input, or the original value when parsing fails.
+    """
     if not iso_str:
         return "unknown day"
     try:
@@ -116,10 +145,16 @@ def format_delay_announcement(
     tz=None,
 ):
     """
-    Returns (subject, body) for a delay announcement.
-
-    Example body:
-      **Pawpet Show** will be delayed by about **15 minutes** *(Running a bit late)*
+    Build the subject and body for a delay announcement.
+    
+    Parameters:
+        comment (str, optional): Additional context included in the body.
+        start (str, optional): Event start timestamp included in the body.
+        room (str, optional): Event room included in the body.
+        tz (optional): Time zone used to format the start timestamp.
+    
+    Returns:
+        tuple: The announcement subject and body.
     """
     subject = f"Delay: {title}"
 
@@ -146,9 +181,20 @@ def format_change_announcement(
     tz=None,
 ):
     """
-    Returns (subject, body) for a schedule-change announcement.
-
-    change_types may contain any combination of: 'new', 'cancelled', 'time', 'day', 'room'
+    Format a new-event, cancellation, or schedule-change announcement.
+    
+    Parameters:
+        title (str): Event title.
+        change_types (list): Change categories, such as ``"new"``, ``"cancelled"``,
+            ``"time"``, ``"day"``, or ``"room"``.
+        old_start: Previous event start timestamp.
+        old_room: Previous event room.
+        new_start: Updated event start timestamp.
+        new_room: Updated event room.
+        tz: Time zone used to format timestamps.
+    
+    Returns:
+        tuple: The announcement subject and body.
     """
     types = set(change_types)
 
@@ -204,6 +250,17 @@ class BaseChannel:
     name = "base"
 
     def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
+        """Send an announcement through the channel.
+        
+        Parameters:
+        	title (str): Announcement title.
+        	body (str): Announcement content.
+        	area (str): Announcement area.
+        	expires_at: Optional expiration timestamp.
+        
+        Returns:
+        	ChannelResult: The result of sending the announcement.
+        """
         raise NotImplementedError
 
 
@@ -215,6 +272,15 @@ class LoggerChannel(BaseChannel):
     name = "logger"
 
     def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
+        """
+        Record an announcement as successfully sent through the logger channel.
+        
+        Parameters:
+            expires_at: Optional expiration time for the announcement.
+        
+        Returns:
+            A successful channel result.
+        """
         logger.info(
             "[ANNOUNCE:%s] %s | %s%s",
             area.upper(),
@@ -242,11 +308,30 @@ class EFAppChannel(BaseChannel):
     }
 
     def __init__(self, api_base: str, token: str, author: str = "EF Operations"):
+        """Initialize an EF App channel with its API endpoint, authentication token, and author name.
+        
+        Parameters:
+            api_base (str): Base URL for the EF App API.
+            token (str): Authentication token used for API requests.
+            author (str): Name attributed to announcements.
+        """
         self.api_base = api_base.rstrip("/")
         self.token = token
         self.author = author
 
     def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
+        """
+        Post an announcement to the EF App.
+        
+        Parameters:
+            title (str): Announcement title.
+            body (str): Announcement content.
+            area (str): Internal announcement area name.
+            expires_at: Optional expiration timestamp for the announcement.
+        
+        Returns:
+            ChannelResult: The posting outcome, including the remote announcement ID on success.
+        """
         try:
             import requests as _requests
         except ImportError:
@@ -331,6 +416,15 @@ class EFSchedBotChannel(BaseChannel):
         self.token = token
 
     def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
+        """
+        Send a pending notification through the EFSched Bot API.
+        
+        Parameters:
+            expires_at: Optional timestamp at which the notification expires.
+        
+        Returns:
+            ChannelResult: The notification result, including its remote ID on success or an error message on failure.
+        """
         try:
             import requests as _requests
         except ImportError:
@@ -393,6 +487,12 @@ _channels = []
 
 
 def _build_channels():
+    """
+    Build the configured announcement channels.
+    
+    Returns:
+    	list: The logger channel and any external channels configured through environment variables.
+    """
     channels = [LoggerChannel()]
 
     ef_api = os.environ.get("EF_APP_API", "").strip()
@@ -421,6 +521,7 @@ def _build_channels():
 
 
 def _get_channels():
+    """Return the configured announcement channels, building and caching them when needed."""
     global _channels
     if not _channels:
         _channels = _build_channels()
@@ -441,16 +542,19 @@ def dispatch_delay(
     tz=None,
 ) -> DispatchResult:
     """
-    Format and dispatch a delay announcement across all channels.
-
-    Args:
-        title:   Submission title (event name)
-        minutes: Delay in minutes
-        comment: Optional staff comment
-        start:   ISO start time of the slot (for display)
-        end:     ISO end time of the slot (used to compute expiry = end + minutes)
-        room:    Room name (for context)
-        tz:      ZoneInfo timezone object for formatting times (optional)
+    Format and dispatch a delay announcement through all configured channels.
+    
+    Parameters:
+        title (str): Event title.
+        minutes (int): Delay duration in minutes.
+        comment: Optional staff comment.
+        start: Optional ISO start timestamp used in the announcement.
+        end: Optional ISO end timestamp used to calculate expiration.
+        room: Optional room name.
+        tz: Optional timezone used to format the start time.
+    
+    Returns:
+        DispatchResult: Results from each configured channel.
     """
     from datetime import timedelta
     subject, body = format_delay_announcement(title, minutes, comment, start, room, tz)
@@ -479,10 +583,23 @@ def dispatch_change(
     tz=None,
 ) -> DispatchResult:
     """
-    Format and dispatch a schedule-change announcement across all channels.
-
-    change_types: list of strings from ['new', 'cancelled', 'time', 'day', 'room']
-    Expiry is the latest of old_end / new_end (whichever exist).
+    Format and dispatch an announcement for a new, cancelled, or rescheduled event.
+    
+    Parameters:
+        title (str): Event title.
+        change_types (list): Changes to announce, such as ``new``, ``cancelled``,
+            ``time``, ``day``, or ``room``.
+        old_start: Previous event start timestamp.
+        old_end: Previous event end timestamp.
+        old_room: Previous event room.
+        new_start: Updated event start timestamp.
+        new_end: Updated event end timestamp.
+        new_room: Updated event room.
+        tz: Time zone used to format timestamps.
+    
+    Returns:
+        DispatchResult: Results from sending the announcement through all configured
+            channels.
     """
     types = set(change_types)
     if "new" in types:

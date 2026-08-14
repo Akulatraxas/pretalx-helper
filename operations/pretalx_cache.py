@@ -355,24 +355,14 @@ def find_conflicts(cache_data, assignments):
 
 def _detect_changes(old_cache, new_cache):
     """
-    Compare old and new slot snapshots and return a list of change dicts.
-
-    Change types detected
-    ---------------------
-    'new'       — slot exists in new version but not in old (new submission or
-                  extra slot added to an existing submission)
-    'cancelled' — slot exists in old version but not in new
-    'time'      — start or end time moved (same day)
-    'day'       — date part changed
-    'room'      — room_name changed
-
-    Slot-matching strategy
-    ----------------------
-    slot_index is 0-based and assigned in API order, so dropping a slot causes
-    all subsequent indices to shift.  We match slots *within a submission*
-    by pairing them in sorted start-time order rather than by
-    slot_index.  This avoids false "time changed" hits when only slot ordering
-    changed. This is a rare situation anyway as all normal panels are single slot.
+    Compare two cached schedule versions and identify additions, cancellations, unscheduled transitions, and slot changes.
+    
+    Parameters:
+        old_cache (dict): Previously cached schedule data.
+        new_cache (dict): Newly cached schedule data.
+    
+    Returns:
+        list: Change records containing submission, slot, schedule version, and old/new timing and room details. Returns an empty list when either cache is unavailable or both caches use the same schedule version.
     """
     if not old_cache or not new_cache:
         return []
@@ -389,6 +379,18 @@ def _detect_changes(old_cache, new_cache):
     detected  = []
 
     def _base(code, slot, types):
+        """
+        Build a schedule change record for a submission slot.
+        
+        Parameters:
+            code (str): Submission code associated with the change.
+            slot (dict): Slot data containing an optional ``slot_index``.
+            types (list[str]): Change types detected for the slot.
+        
+        Returns:
+            dict: Change record containing the submission code, slot index, schedule
+            versions, and detected change types.
+        """
         return {
             "submission_code": code,
             "slot_index":      slot.get("slot_index", 0),
@@ -518,6 +520,13 @@ def _detect_changes(old_cache, new_cache):
 
 
 def _do_fetch():
+    """
+    Refresh the cached Pretalx data and record any schedule changes.
+    
+    Fetch failures leave the existing cached data unchanged and store the error
+    message for status reporting. Schedule-change persistence failures are logged
+    separately.
+    """
     try:
         client = PretalxClient(url=PRETALX_URL, apikey=PRETALX_APIKEY)
         data   = build_cache(client, PRETALX_EVENT, SCHEDULE_VERSION)

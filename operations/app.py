@@ -130,12 +130,14 @@ def page_operations():
 @app.route(f"{BASE_PATH}/occupancy")
 @auth.require_read
 def page_occupancy():
+    """Render the occupancy page."""
     return render_template("occupancy.html", page="occupancy")
 
 
 @app.route(f"{BASE_PATH}/delays")
 @auth.require_read
 def page_delays():
+    """Render the delays page."""
     return render_template("delays.html", page="delays")
 
 # ---------------------------------------------------------------------------
@@ -161,6 +163,11 @@ def api_debug_headers():
 @app.route(f"{BASE_PATH}/api/refresh", methods=["POST","GET"])
 @auth.require_write
 def api_refresh():
+    """Start refreshing the Pretalx cache.
+    
+    Returns:
+        Response: A JSON response confirming that the refresh started.
+    """
     pretalx_cache.trigger_refresh()
     return jsonify({"status": "refresh started"})
 
@@ -823,7 +830,15 @@ def _get_conflict_codes(cache):
 
 def _build_output_rows(cache, by_code, conflict_codes):
     """
-    Expand submission assignments into one row per slot, sorted by start time.
+    Expand assigned submissions into one row per schedule slot and sort the rows chronologically.
+    
+    Parameters:
+    	cache (dict): Cached submission data.
+    	by_code (dict): Submission assignments keyed by submission code.
+    	conflict_codes (set): Submission codes with scheduling conflicts.
+    
+    Returns:
+    	list: Slot-level rows containing submission, schedule, assignment, comment, and conflict details.
     """
     from datetime import datetime
 
@@ -882,12 +897,15 @@ def _build_output_rows(cache, by_code, conflict_codes):
 @auth.require_read
 def api_delays():
     """
-    Return submissions whose slots are currently running OR start within the
-    next 4 hours, enriched with any active delay record.
-
-    Query params:
-      ?hours=N   — lookahead window in hours (default 4)
-      ?at=...    — override reference time (test mode)
+    List currently running or upcoming schedule slots with their active delay details.
+    
+    Query parameters:
+        hours: Lookahead window in hours, clamped to 1–24; defaults to 4.
+        at: Optional ISO-formatted reference time for test mode.
+    
+    Returns:
+        A JSON response containing matching slots, their delay details, reference time,
+        and whether test mode is enabled.
     """
     from datetime import datetime, timezone, timedelta
     from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -986,7 +1004,16 @@ def api_delays():
 )
 @auth.require_write
 def api_slot_set_delay(code, slot_index):
-    """Set or update a delay for a slot."""
+    """
+    Set or update a slot delay and dispatch its announcement.
+    
+    Parameters:
+        code: Submission code identifying the slot.
+        slot_index: Index of the slot within the submission.
+    
+    Returns:
+        A JSON response containing the delay duration, optional comment, and announcement result.
+    """
     data = request.get_json(force=True) or {}
     try:
         minutes = int(data.get("minutes", 0))
@@ -1080,7 +1107,13 @@ def api_changes():
 @auth.require_write
 def api_change_send(change_id):
     """
-    Mark a change as 'sent' and dispatch announcement to all channels.
+    Mark a pending schedule change as sent and dispatch its announcement.
+    
+    Parameters:
+        change_id: Identifier of the schedule change.
+    
+    Returns:
+        A JSON response containing the sent status and announcement dispatch result.
     """
     # Fetch the change row first so we can format the announcement
     change = db.get_change_by_id(change_id)

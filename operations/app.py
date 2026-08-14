@@ -10,6 +10,8 @@ import sys
 import logging
 import io
 import csv
+from datetime import timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from flask import (
     Flask, render_template, jsonify, request,
@@ -48,6 +50,22 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def _resolve_event_timezone() -> ZoneInfo | timezone:
+    """
+    Resolve the configured EVENT_TIMEZONE into a tzinfo object.
+    
+    Falls back to UTC if the timezone is invalid or unknown.
+    """
+    try:
+        return ZoneInfo(EVENT_TIMEZONE)
+    except (ZoneInfoNotFoundError, ValueError):
+        logger.warning("Unknown EVENT_TIMEZONE %r, falling back to UTC", EVENT_TIMEZONE)
+        return timezone.utc
+
+
+EVENT_TZ = _resolve_event_timezone()
 
 app = Flask(
     __name__,
@@ -528,8 +546,7 @@ def api_upcoming():
     For testing before the con, pass ?at=YYYY-MM-DDTHH:MM to override "now".
     Example: ?at=2026-08-19T10:00&hours=4
     """
-    from datetime import datetime, timezone, timedelta
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    from datetime import datetime, timedelta
 
     cache = pretalx_cache.get_cache()
     if cache is None:
@@ -543,12 +560,8 @@ def api_upcoming():
 
     include_all = request.args.get("all") == "1"
 
-    # Resolve the event's local timezone (used to interpret naive ?at= values)
-    try:
-        event_tz = ZoneInfo(EVENT_TIMEZONE)
-    except ZoneInfoNotFoundError:
-        logger.warning("Unknown EVENT_TIMEZONE %r, falling back to UTC", EVENT_TIMEZONE)
-        event_tz = timezone.utc
+    # Event local timezone (used to interpret naive ?at= values)
+    event_tz = EVENT_TZ
 
     # ?at= override: lets you test against a specific point in time.
     # The browser datetime-local input always sends a naive string (no offset),
@@ -685,18 +698,13 @@ def api_occupancy():
       ?rooms=Room1,Room2     — comma-separated room name filter
       ?show_rated=1          — include already-rated slots (default 0)
     """
-    from datetime import datetime, timezone, timedelta
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    from datetime import datetime, timedelta
 
     cache = pretalx_cache.get_cache()
     if cache is None:
         return jsonify({"error": "Cache not ready"}), 503
 
-    # Resolve the event’s local timezone
-    try:
-        event_tz = ZoneInfo(EVENT_TIMEZONE)
-    except ZoneInfoNotFoundError:
-        event_tz = timezone.utc
+    event_tz = EVENT_TZ
 
     # ?at= override for test mode
     at_str = (request.args.get("at") or "").strip()
@@ -907,17 +915,13 @@ def api_delays():
         A JSON response containing matching slots, their delay details, reference time,
         and whether test mode is enabled.
     """
-    from datetime import datetime, timezone, timedelta
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    from datetime import datetime, timedelta
 
     cache = pretalx_cache.get_cache()
     if cache is None:
         return jsonify({"error": "Cache not ready"}), 503
 
-    try:
-        event_tz = ZoneInfo(EVENT_TIMEZONE)
-    except ZoneInfoNotFoundError:
-        event_tz = timezone.utc
+    event_tz = EVENT_TZ
 
     at_str = (request.args.get("at") or "").strip()
     if at_str:
@@ -1027,11 +1031,7 @@ def api_slot_set_delay(code, slot_index):
                     user_email=g.user.get("email"))
 
     # Dispatch announcement — enrich with slot data from cache
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-    try:
-        event_tz = ZoneInfo(EVENT_TIMEZONE)
-    except ZoneInfoNotFoundError:
-        event_tz = None
+    event_tz = EVENT_TZ
 
     cache = pretalx_cache.get_cache()
     slot_info = {}
@@ -1129,11 +1129,7 @@ def api_change_send(change_id):
     sub = (cache or {}).get("submissions_map", {}).get(change["submission_code"], {})
     title = sub.get("title", change["submission_code"])
 
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-    try:
-        event_tz = ZoneInfo(EVENT_TIMEZONE)
-    except ZoneInfoNotFoundError:
-        event_tz = None
+    event_tz = EVENT_TZ
 
     dispatch_result = announcements.dispatch_change(
         title=title,

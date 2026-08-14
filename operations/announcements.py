@@ -636,7 +636,7 @@ def dispatch_change(
     )
 
     # Expiry: the later of old_end / new_end (cover both the old and new slot window)
-    candidates = [_parse_dt_utc(t) for t in (old_end, new_end) if t]
+    candidates = [dt for dt in (_parse_dt_utc(old_end), _parse_dt_utc(new_end)) if dt]
     expires_at = max(candidates) if candidates else None
 
     result = DispatchResult()

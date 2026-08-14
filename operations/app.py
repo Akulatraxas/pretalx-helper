@@ -1027,6 +1027,8 @@ def api_slot_set_delay(code, slot_index):
         return jsonify({"error": "minutes must be between 1 and 1440"}), 400
 
     comment = (data.get("comment") or "").strip() or None
+    if comment and len(comment) > 500:
+        return jsonify({"error": "comment must be 500 characters or fewer"}), 400
     db.upsert_delay(code, slot_index, minutes, comment,
                     user_email=g.user.get("email"))
 

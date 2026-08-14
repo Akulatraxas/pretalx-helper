@@ -116,44 +116,44 @@ def add_security_headers(response):
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/")
-@auth.require_read
+@auth.require_read_events
 def index():
     return redirect(url_for("page_events"))
 
 
 @app.route(f"{BASE_PATH}/resources")
-@auth.require_read
+@auth.require_read_events
 def page_resources():
     return render_template("resources.html", page="resources")
 
 
 @app.route(f"{BASE_PATH}/events")
-@auth.require_read
+@auth.require_read_events
 def page_events():
     return render_template("events.html", page="events")
 
 
 @app.route(f"{BASE_PATH}/output")
-@auth.require_read
+@auth.require_read_events
 def page_output():
     return render_template("output.html", page="output")
 
 
 @app.route(f"{BASE_PATH}/operations")
-@auth.require_read
+@auth.require_read_operations
 def page_operations():
     return render_template("operations.html", page="operations")
 
 
 @app.route(f"{BASE_PATH}/occupancy")
-@auth.require_read
+@auth.require_read_operations
 def page_occupancy():
     """Render the occupancy page."""
     return render_template("occupancy.html", page="occupancy")
 
 
 @app.route(f"{BASE_PATH}/delays")
-@auth.require_read
+@auth.require_read_announcements
 def page_delays():
     """Render the delays page."""
     return render_template("delays.html", page="delays")
@@ -179,7 +179,7 @@ def api_debug_headers():
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/api/refresh", methods=["POST","GET"])
-@auth.require_write
+@auth.require_admin
 def api_refresh():
     """Start refreshing the Pretalx cache.
     
@@ -191,7 +191,7 @@ def api_refresh():
 
 
 @app.route(f"{BASE_PATH}/api/submissions")
-@auth.require_read
+@auth.require_read_events
 def api_submissions():
     """
     List submissions from cache, optionally filtered by ?q=search.
@@ -235,7 +235,7 @@ def api_submissions():
 
 
 @app.route(f"{BASE_PATH}/api/submission/<code>")
-@auth.require_read
+@auth.require_read_events
 def api_submission_detail(code):
     """Full detail for one submission: pretalx data + DB assignments."""
     cache = pretalx_cache.get_cache()
@@ -261,7 +261,7 @@ def api_submission_detail(code):
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/api/resources", methods=["GET"])
-@auth.require_read
+@auth.require_read_events
 def api_resources_list():
     q = (request.args.get("q") or "").strip().lower()
     resources = db.list_resources()
@@ -271,7 +271,7 @@ def api_resources_list():
 
 
 @app.route(f"{BASE_PATH}/api/resources", methods=["POST"])
-@auth.require_write
+@auth.require_write_events
 def api_resources_create():
     data = request.get_json(force=True) or {}
     name  = (data.get("name") or "").strip()
@@ -289,7 +289,7 @@ def api_resources_create():
 
 
 @app.route(f"{BASE_PATH}/api/resources/<int:rid>", methods=["PATCH"])
-@auth.require_write
+@auth.require_write_events
 def api_resources_update(rid):
     data = request.get_json(force=True) or {}
     name   = (data.get("name") or "").strip()
@@ -302,14 +302,14 @@ def api_resources_update(rid):
 
 
 @app.route(f"{BASE_PATH}/api/resources/<int:rid>", methods=["DELETE"])
-@auth.require_write
+@auth.require_write_events
 def api_resources_delete(rid):
     db.delete_resource(rid, user_email=g.user.get("email"))
     return jsonify({"ok": True})
 
 
 @app.route(f"{BASE_PATH}/api/resources/<int:rid>/usages")
-@auth.require_read
+@auth.require_read_events
 def api_resource_usages(rid):
     """
     Return all submissions that have this resource assigned, enriched with
@@ -346,13 +346,13 @@ def api_resource_usages(rid):
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/api/submission/<code>/assignments", methods=["GET"])
-@auth.require_read
+@auth.require_read_events
 def api_get_assignments(code):
     return jsonify(db.get_submission_assignments(code))
 
 
 @app.route(f"{BASE_PATH}/api/submission/<code>/resources", methods=["POST"])
-@auth.require_write
+@auth.require_write_events
 def api_add_resource(code):
     cache = pretalx_cache.get_cache()
     if cache and code not in cache["submissions_map"]:
@@ -380,7 +380,7 @@ def api_add_resource(code):
 
 
 @app.route(f"{BASE_PATH}/api/submission/<code>/resources/<int:assignment_id>", methods=["DELETE"])
-@auth.require_write
+@auth.require_write_events
 def api_remove_resource(code, assignment_id):
     db.remove_submission_resource(assignment_id, user_email=g.user.get("email"))
     return jsonify({"ok": True})
@@ -391,7 +391,7 @@ def api_remove_resource(code, assignment_id):
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/api/submission/<code>/comments", methods=["POST"])
-@auth.require_write
+@auth.require_write_events
 def api_add_comment(code):
     cache = pretalx_cache.get_cache()
     if cache and code not in cache["submissions_map"]:
@@ -413,7 +413,7 @@ def api_add_comment(code):
 
 
 @app.route(f"{BASE_PATH}/api/submission/<code>/comments/<int:comment_id>", methods=["DELETE"])
-@auth.require_write
+@auth.require_write_events
 def api_remove_comment(code, comment_id):
     db.remove_submission_comment(comment_id, user_email=g.user.get("email"))
     return jsonify({"ok": True})
@@ -424,7 +424,7 @@ def api_remove_comment(code, comment_id):
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/api/output")
-@auth.require_read
+@auth.require_read_events
 def api_output():
     """
     Returns a list of slot rows suitable for the output table.
@@ -444,7 +444,7 @@ def api_output():
 
 
 @app.route(f"{BASE_PATH}/api/output/csv")
-@auth.require_read
+@auth.require_read_events
 def api_output_csv():
     dept  = request.args.get("dept") or "all"
     cache = pretalx_cache.get_cache()
@@ -507,7 +507,7 @@ def api_output_csv():
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/api/conflicts")
-@auth.require_read
+@auth.require_read_events
 def api_conflicts():
     cache = pretalx_cache.get_cache()
     if cache is None:
@@ -536,7 +536,7 @@ def api_conflicts():
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/api/upcoming")
-@auth.require_read
+@auth.require_read_operations
 def api_upcoming():
     """
     Return submissions whose slots start within the next ?hours=N hours.
@@ -658,7 +658,7 @@ def api_upcoming():
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/take", methods=["POST"])
-@auth.require_write
+@auth.require_write_operations
 def api_slot_take(code, slot_index):
     """Assign this slot to the current user."""
     db.take_operation_event(code, slot_index, g.user.get("email"))
@@ -666,7 +666,7 @@ def api_slot_take(code, slot_index):
 
 
 @app.route(f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/complete", methods=["POST"])
-@auth.require_write
+@auth.require_write_operations
 def api_slot_complete(code, slot_index):
     """Mark this slot as completed."""
     db.complete_operation_event(code, slot_index, g.user.get("email"))
@@ -675,7 +675,7 @@ def api_slot_complete(code, slot_index):
 
 
 @app.route(f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/unassign", methods=["POST"])
-@auth.require_write
+@auth.require_write_operations
 def api_slot_unassign(code, slot_index):
     """Remove the assignee and reset completion for this slot."""
     db.unassign_operation_event(code, slot_index, g.user.get("email"))
@@ -687,7 +687,7 @@ def api_slot_unassign(code, slot_index):
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/api/occupancy")
-@auth.require_read
+@auth.require_read_operations
 def api_occupancy():
     """
     Return submissions whose slots are currently running OR start within the
@@ -807,7 +807,7 @@ def api_occupancy():
 
 
 @app.route(f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/rate", methods=["POST"])
-@auth.require_write
+@auth.require_write_operations
 def api_slot_rate(code, slot_index):
     """Set (or update) the occupancy rating for a slot."""
     data   = request.get_json(force=True) or {}
@@ -902,7 +902,7 @@ def _build_output_rows(cache, by_code, conflict_codes):
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/api/delays")
-@auth.require_read
+@auth.require_read_announcements
 def api_delays():
     """
     List currently running or upcoming schedule slots with their active delay details.
@@ -1006,7 +1006,7 @@ def api_delays():
     f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/delay",
     methods=["POST"],
 )
-@auth.require_write
+@auth.require_write_announcements
 def api_slot_set_delay(code, slot_index):
     """
     Set or update a slot delay and dispatch its announcement.
@@ -1071,7 +1071,7 @@ def api_slot_set_delay(code, slot_index):
     f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/delay",
     methods=["DELETE"],
 )
-@auth.require_write
+@auth.require_write_announcements
 def api_slot_clear_delay(code, slot_index):
     """Remove a delay record for a slot."""
     db.clear_delay(code, slot_index, user_email=g.user.get("email"))
@@ -1083,7 +1083,7 @@ def api_slot_clear_delay(code, slot_index):
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/api/changes")
-@auth.require_read
+@auth.require_read_announcements
 def api_changes():
     """
     Return all pending schedule changes, enriched with submission title/track
@@ -1106,7 +1106,7 @@ def api_changes():
 
 
 @app.route(f"{BASE_PATH}/api/changes/<int:change_id>/send", methods=["POST"])
-@auth.require_write
+@auth.require_write_announcements
 def api_change_send(change_id):
     """
     Mark a pending schedule change as sent and dispatch its announcement.
@@ -1153,7 +1153,7 @@ def api_change_send(change_id):
 
 
 @app.route(f"{BASE_PATH}/api/changes/<int:change_id>/discard", methods=["POST"])
-@auth.require_write
+@auth.require_write_announcements
 def api_change_discard(change_id):
     """Discard a pending change (suppress it from the UI)."""
     ok = db.action_change(change_id, "discarded", user_email=g.user.get("email"))

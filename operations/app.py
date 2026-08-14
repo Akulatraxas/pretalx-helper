@@ -908,7 +908,7 @@ def api_delays():
     List currently running or upcoming schedule slots with their active delay details.
     
     Query parameters:
-        hours: Lookahead window in hours, clamped to 1–24; defaults to 4.
+        hours: Lookahead window in hours, clamped to 1-24; defaults to 4.
         at: Optional ISO-formatted reference time for test mode.
     
     Returns:

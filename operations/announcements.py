@@ -17,6 +17,7 @@ Usage (from app.py):
 from __future__ import annotations
 
 import os
+import re
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -136,6 +137,24 @@ def _parse_dt_utc(iso_str):
         return None
 
 
+_MD_ESCAPE_RE = re.compile(r"([\\*_{}[\]()#+\-.!~`|<>])")
+
+
+def _md(text: str | None) -> str:
+    """
+    Escape Markdown-special characters in text.
+
+    Parameters:
+        text: Text to escape.
+
+    Returns:
+        str: Escaped text, or empty string if input is None.
+    """
+    if text is None:
+        return ""
+    return _MD_ESCAPE_RE.sub(r"\\\1", str(text))
+
+
 def format_delay_announcement(
     title: str,
     minutes: int,
@@ -158,12 +177,12 @@ def format_delay_announcement(
     """
     subject = f"Delay: {title}"
 
-    comment_part = f" *({comment})*" if comment else ""
-    room_part = f" in **{room}**" if room else ""
+    comment_part = f" *({_md(comment)})*" if comment else ""
+    room_part = f" in **{_md(room)}**" if room else ""
     time_part = f" starting at {_fmt_time(start, tz)}" if start else ""
 
     body = (
-        f"**{title}**{room_part}{time_part} will be delayed by about "
+        f"**{_md(title)}**{room_part}{time_part} will be delayed by about "
         f"**{minutes} minute{'s' if minutes != 1 else ''}**{comment_part}"
     )
     return subject, body
@@ -202,9 +221,9 @@ def format_change_announcement(
         subject = f"New Event: {title}"
         day = _fmt_day(new_start, tz)
         time = _fmt_time(new_start, tz)
-        room_part = f" in **{new_room}**" if new_room else ""
+        room_part = f" in **{_md(new_room)}**" if new_room else ""
         body = (
-            f"✨ **New Event:** **{title}** will take place{room_part} "
+            f"✨ **New Event:** **{_md(title)}** will take place{room_part} "
             f"starting at **{time}** on **{day}**"
         )
         return subject, body
@@ -214,7 +233,7 @@ def format_change_announcement(
         day = _fmt_day(old_start, tz)
         time = _fmt_time(old_start, tz)
         body = (
-            f"❌ **CANCELLED:** We are sorry to announce that **{title}** "
+            f"❌ **CANCELLED:** We are sorry to announce that **{_md(title)}** "
             f"planned for **{time}** on **{day}** will **NOT** take place."
         )
         return subject, body
@@ -229,15 +248,15 @@ def format_change_announcement(
         parts.append(f"~~{old_t}~~ \u2192 **{new_t}**")
 
     if "room" in types:
-        old_r = old_room or "unknown room"
-        new_r = new_room or "unknown room"
+        old_r = _md(old_room) if old_room else "unknown room"
+        new_r = _md(new_room) if new_room else "unknown room"
         parts.append(f"~~{old_r}~~ \u2192 **{new_r}**")
 
     if parts:
         changes_text = " | ".join(parts)
-        body = f"📅 **Schedule Change:** **{title}** has been updated: {changes_text}"
+        body = f"📅 **Schedule Change:** **{_md(title)}** has been updated: {changes_text}"
     else:
-        body = f"📅 **Schedule Change:** **{title}** has been updated."
+        body = f"📅 **Schedule Change:** **{_md(title)}** has been updated."
 
     return subject, body
 

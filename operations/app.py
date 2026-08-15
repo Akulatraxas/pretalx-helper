@@ -118,30 +118,42 @@ def add_security_headers(response):
 @app.route(f"{BASE_PATH}/")
 @auth.require_read_events
 def index():
+    """Redirects requests from the base path to the events page."""
     return redirect(url_for("page_events"))
 
 
 @app.route(f"{BASE_PATH}/resources")
 @auth.require_read_events
 def page_resources():
+    """Render the resources page."""
     return render_template("resources.html", page="resources")
 
 
 @app.route(f"{BASE_PATH}/events")
 @auth.require_read_events
 def page_events():
+    """
+    Render the events page.
+    
+    Returns:
+    	str: The rendered events HTML response.
+    """
     return render_template("events.html", page="events")
 
 
 @app.route(f"{BASE_PATH}/output")
 @auth.require_read_events
 def page_output():
+    """
+    Render the output page.
+    """
     return render_template("output.html", page="output")
 
 
 @app.route(f"{BASE_PATH}/operations")
 @auth.require_read_operations
 def page_operations():
+    """Render the operations page."""
     return render_template("operations.html", page="operations")
 
 
@@ -194,9 +206,12 @@ def api_refresh():
 @auth.require_read_events
 def api_submissions():
     """
-    List submissions from cache, optionally filtered by ?q=search.
-    Also annotates each submission with has_resources / has_comments / has_conflict
-    from the DB (expensive-ish but submissions list is typically < 500 entries).
+    List cached submissions, optionally filtered by a search query.
+    
+    Returns:
+        JSON response containing the matching submissions and their total count.
+        Each submission includes assignment and conflict indicators. Returns HTTP
+        503 when the cache is unavailable.
     """
     cache = pretalx_cache.get_cache()
     if cache is None:
@@ -237,7 +252,16 @@ def api_submissions():
 @app.route(f"{BASE_PATH}/api/submission/<code>")
 @auth.require_read_events
 def api_submission_detail(code):
-    """Full detail for one submission: pretalx data + DB assignments."""
+    """
+    Retrieve detailed submission data, including its resource assignments and conflict status.
+    
+    Parameters:
+        code (str): The unique submission code.
+    
+    Returns:
+        Response: A JSON response containing the submission details, assignments, and conflict status.
+            Returns HTTP 503 when the cache is unavailable or HTTP 404 when the submission is missing.
+    """
     cache = pretalx_cache.get_cache()
     if cache is None:
         return jsonify({"error": "Cache not ready"}), 503
@@ -263,6 +287,14 @@ def api_submission_detail(code):
 @app.route(f"{BASE_PATH}/api/resources", methods=["GET"])
 @auth.require_read_events
 def api_resources_list():
+    """List resources, optionally filtered by a case-insensitive name search.
+    
+    Parameters:
+        q (str): Optional search text matched against resource names.
+    
+    Returns:
+        Response: A JSON response containing the matching resources.
+    """
     q = (request.args.get("q") or "").strip().lower()
     resources = db.list_resources()
     if q:
@@ -273,6 +305,12 @@ def api_resources_list():
 @app.route(f"{BASE_PATH}/api/resources", methods=["POST"])
 @auth.require_write_events
 def api_resources_create():
+    """Create a resource from the request JSON payload.
+    
+    Returns:
+        A JSON response containing the created resource ID with status 201.
+        Invalid names return status 400, and duplicate names return status 409.
+    """
     data = request.get_json(force=True) or {}
     name  = (data.get("name") or "").strip()
     if not name:
@@ -291,6 +329,15 @@ def api_resources_create():
 @app.route(f"{BASE_PATH}/api/resources/<int:rid>", methods=["PATCH"])
 @auth.require_write_events
 def api_resources_update(rid):
+    """
+    Update a resource's name, amount, and department assignments.
+    
+    Parameters:
+        rid: The identifier of the resource to update.
+    
+    Returns:
+        A JSON response indicating whether the update succeeded.
+    """
     data = request.get_json(force=True) or {}
     name   = (data.get("name") or "").strip()
     if not name:
@@ -304,6 +351,7 @@ def api_resources_update(rid):
 @app.route(f"{BASE_PATH}/api/resources/<int:rid>", methods=["DELETE"])
 @auth.require_write_events
 def api_resources_delete(rid):
+    """Delete a resource by its identifier."""
     db.delete_resource(rid, user_email=g.user.get("email"))
     return jsonify({"ok": True})
 
@@ -348,12 +396,29 @@ def api_resource_usages(rid):
 @app.route(f"{BASE_PATH}/api/submission/<code>/assignments", methods=["GET"])
 @auth.require_read_events
 def api_get_assignments(code):
+    """Retrieve resource assignments for a submission.
+    
+    Parameters:
+    	code (str): The submission code.
+    
+    Returns:
+    	assignments (JSON response): The submission's resource assignments.
+    """
     return jsonify(db.get_submission_assignments(code))
 
 
 @app.route(f"{BASE_PATH}/api/submission/<code>/resources", methods=["POST"])
 @auth.require_write_events
 def api_add_resource(code):
+    """
+    Assigns a resource to a submission.
+    
+    Parameters:
+        code (str): The submission code to associate with the resource.
+    
+    Returns:
+        dict: A success response when the assignment is created, or an error response if the submission or resource is unavailable or the request is invalid.
+    """
     cache = pretalx_cache.get_cache()
     if cache and code not in cache["submissions_map"]:
         return jsonify({"error": "Submission not found in cache"}), 404
@@ -382,6 +447,15 @@ def api_add_resource(code):
 @app.route(f"{BASE_PATH}/api/submission/<code>/resources/<int:assignment_id>", methods=["DELETE"])
 @auth.require_write_events
 def api_remove_resource(code, assignment_id):
+    """Remove a resource assignment from a submission.
+    
+    Parameters:
+    	code (str): Submission code associated with the assignment.
+    	assignment_id (int): Identifier of the resource assignment to remove.
+    
+    Returns:
+    	Response: A JSON response indicating whether the removal succeeded.
+    """
     db.remove_submission_resource(assignment_id, user_email=g.user.get("email"))
     return jsonify({"ok": True})
 
@@ -393,6 +467,14 @@ def api_remove_resource(code, assignment_id):
 @app.route(f"{BASE_PATH}/api/submission/<code>/comments", methods=["POST"])
 @auth.require_write_events
 def api_add_comment(code):
+    """Add a department-specific comment to a submission.
+    
+    Parameters:
+        code (str): Submission code identifying the submission.
+    
+    Returns:
+        Response: JSON containing the created comment ID with HTTP status 201.
+    """
     cache = pretalx_cache.get_cache()
     if cache and code not in cache["submissions_map"]:
         return jsonify({"error": "Submission not found in cache"}), 404
@@ -415,6 +497,7 @@ def api_add_comment(code):
 @app.route(f"{BASE_PATH}/api/submission/<code>/comments/<int:comment_id>", methods=["DELETE"])
 @auth.require_write_events
 def api_remove_comment(code, comment_id):
+    """Remove a comment from a submission."""
     db.remove_submission_comment(comment_id, user_email=g.user.get("email"))
     return jsonify({"ok": True})
 
@@ -427,9 +510,13 @@ def api_remove_comment(code, comment_id):
 @auth.require_read_events
 def api_output():
     """
-    Returns a list of slot rows suitable for the output table.
-    Each row = one slot occurrence of a submission that has data for the dept.
-    ?dept=all|Conops|FS-Support|CCH|CODA
+    Builds slot-level rows for the output table, optionally filtered by department.
+    
+    The ``dept`` query parameter accepts ``all`` or a specific department name.
+    
+    Returns:
+        JSON response containing the output rows and selected department, or an
+        HTTP 503 response when the Pretalx cache is unavailable.
     """
     dept  = request.args.get("dept") or "all"
     cache = pretalx_cache.get_cache()
@@ -446,6 +533,13 @@ def api_output():
 @app.route(f"{BASE_PATH}/api/output/csv")
 @auth.require_read_events
 def api_output_csv():
+    """Export department-filtered operation assignments as a downloadable CSV file.
+    
+    Returns:
+        Response: A CSV response containing scheduled submissions, speakers, resources,
+            comments, and conflict indicators. Returns HTTP 503 if the Pretalx cache
+            is unavailable.
+    """
     dept  = request.args.get("dept") or "all"
     cache = pretalx_cache.get_cache()
     if cache is None:
@@ -509,6 +603,13 @@ def api_output_csv():
 @app.route(f"{BASE_PATH}/api/conflicts")
 @auth.require_read_events
 def api_conflicts():
+    """
+    List resource assignment conflicts enriched with submission details.
+    
+    Returns:
+        A JSON response containing the conflicts and their total count, or an
+        error response with status 503 when the Pretalx cache is unavailable.
+    """
     cache = pretalx_cache.get_cache()
     if cache is None:
         return jsonify({"error": "Cache not ready"}), 503
@@ -539,12 +640,18 @@ def api_conflicts():
 @auth.require_read_operations
 def api_upcoming():
     """
-    Return submissions whose slots start within the next ?hours=N hours.
-    Only submissions that have resources or comments are included by default
-    unless ?all=1 is passed.
-
-    For testing before the con, pass ?at=YYYY-MM-DDTHH:MM to override "now".
-    Example: ?at=2026-08-19T10:00&hours=4
+    List upcoming submission slots within a configurable time window.
+    
+    Query parameters:
+        hours (float): Number of hours to include, limited to 1–48 and defaulting to 4.
+        all (str): Set to ``"1"`` to include submissions without resources or comments.
+        at (str): ISO-formatted reference time in the event timezone for testing.
+        mine (str): Set to ``"1"`` to include only slots assigned to the current user.
+    
+    Returns:
+        JSON response containing matching slots, the effective time window, reference
+        time, and whether test mode is active. Returns HTTP 503 if the Pretalx cache
+        is unavailable.
     """
     from datetime import datetime, timedelta
 
@@ -660,7 +767,16 @@ def api_upcoming():
 @app.route(f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/take", methods=["POST"])
 @auth.require_write_operations
 def api_slot_take(code, slot_index):
-    """Assign this slot to the current user."""
+    """
+    Assign an operation slot to the current user.
+    
+    Parameters:
+        code (str): Submission code associated with the operation slot.
+        slot_index (int): Index of the slot to assign.
+    
+    Returns:
+        Response: JSON response containing the assignment status, assigned user email, and incomplete state.
+    """
     db.take_operation_event(code, slot_index, g.user.get("email"))
     return jsonify({"ok": True, "assigned_to": g.user.get("email"), "is_completed": False})
 
@@ -668,7 +784,12 @@ def api_slot_take(code, slot_index):
 @app.route(f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/complete", methods=["POST"])
 @auth.require_write_operations
 def api_slot_complete(code, slot_index):
-    """Mark this slot as completed."""
+    """
+    Mark an operation slot as completed.
+    
+    Returns:
+    	dict: A JSON response indicating success, the assignee's email, and the completed status.
+    """
     db.complete_operation_event(code, slot_index, g.user.get("email"))
     ev = db.get_operation_event(code, slot_index)
     return jsonify({"ok": True, "assigned_to": ev["assigned_to"] if ev else None, "is_completed": True})
@@ -690,13 +811,17 @@ def api_slot_unassign(code, slot_index):
 @auth.require_read_operations
 def api_occupancy():
     """
-    Return submissions whose slots are currently running OR start within the
-    next 1 hour, with their current occupancy rating (if any).
-
-    Query params:
-      ?at=YYYY-MM-DDTHH:MM   — override reference time (test mode)
-      ?rooms=Room1,Room2     — comma-separated room name filter
-      ?show_rated=1          — include already-rated slots (default 0)
+    Return currently running or upcoming submissions with their occupancy ratings.
+    
+    Query parameters:
+        at (str): Optional ISO 8601 reference time for test mode.
+        rooms (str): Optional comma-separated list of room names to include.
+        show_rated (str): Set to ``"1"`` to include slots that already have ratings.
+    
+    Returns:
+        JSON response containing matching slots, occupancy rating options, available
+        room names, and the reference time. Returns HTTP 503 if the Pretalx cache
+        is unavailable.
     """
     from datetime import datetime, timedelta
 
@@ -809,7 +934,16 @@ def api_occupancy():
 @app.route(f"{BASE_PATH}/api/slots/<code>/<int:slot_index>/rate", methods=["POST"])
 @auth.require_write_operations
 def api_slot_rate(code, slot_index):
-    """Set (or update) the occupancy rating for a slot."""
+    """
+    Set or update the occupancy rating for a scheduled slot.
+    
+    Parameters:
+        code (str): The submission code associated with the slot.
+        slot_index (int): The slot's index within the submission.
+    
+    Returns:
+        A JSON response containing the saved rating, or an error response when the rating is invalid.
+    """
     data   = request.get_json(force=True) or {}
     rating = (data.get("rating") or "").strip()
     if rating not in db.OCCUPANCY_RATINGS:
@@ -1009,14 +1143,14 @@ def api_delays():
 @auth.require_write_announcements
 def api_slot_set_delay(code, slot_index):
     """
-    Set or update a slot delay and dispatch its announcement.
+    Set or update the delay for a submission slot and dispatch a delay announcement.
     
     Parameters:
         code: Submission code identifying the slot.
-        slot_index: Index of the slot within the submission.
+        slot_index: Zero-based index of the slot within the submission.
     
     Returns:
-        A JSON response containing the delay duration, optional comment, and announcement result.
+        A JSON response containing the delay duration, comment, and announcement result.
     """
     data = request.get_json(force=True) or {}
     try:
@@ -1086,8 +1220,11 @@ def api_slot_clear_delay(code, slot_index):
 @auth.require_read_announcements
 def api_changes():
     """
-    Return all pending schedule changes, enriched with submission title/track
-    from the in-memory cache.
+    List pending schedule changes enriched with cached submission details.
+    
+    Returns:
+        A JSON response containing the pending changes and their submission titles,
+        tracks, and speakers.
     """
     rows = db.get_pending_changes()
 

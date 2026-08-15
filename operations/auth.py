@@ -51,6 +51,14 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _parse_group_env(var):
+    """Parse a comma-separated environment variable into a set of trimmed group identifiers.
+    
+    Parameters:
+    	var (str): The environment variable name.
+    
+    Returns:
+    	set[str]: The non-empty group identifiers defined by the environment variable.
+    """
     raw = os.environ.get(var, "")
     return {x.strip() for x in raw.split(",") if x.strip()}
 
@@ -86,15 +94,16 @@ _ACL_CONFIGURED = any(_ALL_GROUP_ENVS)
 
 def get_current_user():
     """
-    Build the current user dict from request headers (or dev env vars).
-
-    Returns a dict with:
-        email, username, groups: list
-        can_read, can_write                  — admin (all-domain) flags
-        can_read_events, can_write_events
-        can_read_operations, can_write_operations
-        can_read_announcements, can_write_announcements
-        can_admin                            — admin write (e.g. cache refresh)
+    Resolve the current user's identity, groups, and authorization flags.
+    
+    Identity and groups come from development authentication settings when configured;
+    otherwise, they are read from the request headers. When no ACL groups are
+    configured, all permissions are enabled.
+    
+    Returns:
+        dict: User metadata and authorization flags, including ``email``,
+        ``username``, sorted ``groups``, legacy admin-level permissions, and
+        read/write permissions for Events, Operations, and Announcements.
     """
     if DEV_AUTH_EMAIL:
         email      = DEV_AUTH_EMAIL
@@ -161,8 +170,25 @@ def get_current_user():
 # ---------------------------------------------------------------------------
 
 def _make_decorator(flag, label):
-    """Return a Flask decorator that checks user[flag], logging label on deny."""
+    """Create a Flask decorator that enforces a user's authorization flag.
+    
+    Parameters:
+        flag: The user permission key to check.
+        label: The authorization label used when logging denied requests.
+    
+    Returns:
+        A decorator that permits authorized requests and returns a 403 response for denied requests.
+    """
     def decorator(f):
+        """
+        Create an authorization decorator for a Flask view.
+        
+        Parameters:
+        	f (callable): The view function to protect.
+        
+        Returns:
+        	callable: A wrapped view that executes for authorized users and returns a 403 response otherwise.
+        """
         @wraps(f)
         def decorated(*args, **kwargs):
             user = get_current_user()
@@ -201,10 +227,23 @@ require_write_announcements = _make_decorator("can_write_announcements", "write:
 # ---------------------------------------------------------------------------
 
 def require_read(f):
-    """Deprecated: use a domain-specific decorator instead.
-    Grants access if the user has read permission in any domain or is an admin reader."""
+    """
+    Deprecated legacy decorator that grants access to users with read permission in any domain or administrative read permission.
+    
+    Parameters:
+        f (callable): View function to protect.
+    
+    Returns:
+        callable: Decorated view function that denies unauthorized requests with a 403 response.
+    """
     @wraps(f)
     def decorated(*args, **kwargs):
+        """
+        Authorize access to views requiring read permission in any supported domain.
+        
+        Returns:
+            The wrapped view response when access is granted; otherwise, a 403 response.
+        """
         user = get_current_user()
         g.user = user
         has_any_read = (
@@ -223,10 +262,23 @@ def require_read(f):
 
 
 def require_write(f):
-    """Deprecated: use a domain-specific decorator instead.
-    Grants access if the user has write permission in any domain or is an admin writer."""
+    """
+    Require write access in at least one supported domain.
+    
+    Parameters:
+        f (callable): The function to protect.
+    
+    Returns:
+        callable: A wrapped function that returns a JSON 403 response when access is denied.
+    """
     @wraps(f)
     def decorated(*args, **kwargs):
+        """
+        Authorize access for users with write permission in any supported domain.
+        
+        Returns:
+            The wrapped view result when authorized, or a JSON 403 response when access is denied.
+        """
         user = get_current_user()
         g.user = user
         has_any_write = (

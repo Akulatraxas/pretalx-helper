@@ -10,8 +10,8 @@ Output channels (each implements `send(title, body, area) -> ChannelResult`):
 
 Usage (from app.py):
   import announcements
-  results = announcements.dispatch_delay(title, minutes, comment, start, room, tz)
-  results = announcements.dispatch_change(title, change_types, old_start, ..., tz)
+  results = announcements.dispatch_delay(title=title, minutes=minutes, comment=comment, start=start, end=end, room=room, tz=tz, reference=reference)
+  results = announcements.dispatch_change(title=title, change_types=change_types, old_start=old_start, old_end=old_end, old_room=old_room, new_start=new_start, new_end=new_end, new_room=new_room, tz=tz, reference=reference)
 """
 
 from __future__ import annotations
@@ -268,7 +268,14 @@ def format_change_announcement(
 class BaseChannel:
     name = "base"
 
-    def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
+    def send(
+        self,
+        title: str,
+        body: str,
+        area: str,
+        expires_at=None,
+        reference: Optional[str] = None,
+    ) -> ChannelResult:
         """Send an announcement through the channel.
         
         Parameters:
@@ -276,6 +283,7 @@ class BaseChannel:
         	body (str): Announcement content.
         	area (str): Announcement area.
         	expires_at: Optional expiration timestamp.
+        	reference: Optional reference identifier (e.g. "{code}-{slot}").
         
         Returns:
         	ChannelResult: The result of sending the announcement.
@@ -290,22 +298,33 @@ class BaseChannel:
 class LoggerChannel(BaseChannel):
     name = "logger"
 
-    def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
+    def send(
+        self,
+        title: str,
+        body: str,
+        area: str,
+        expires_at=None,
+        reference: Optional[str] = None,
+    ) -> ChannelResult:
         """
         Record an announcement as successfully sent through the logger channel.
         
         Parameters:
             expires_at: Optional expiration time for the announcement.
+            reference: Optional reference identifier (e.g. "{code}-{slot}").
         
         Returns:
             A successful channel result.
         """
+        ref_part = f" (ref: {reference})" if reference else ""
+        expires_part = f" (expires: {expires_at.strftime('%Y-%m-%dT%H:%M:%SZ')})" if expires_at else ""
         logger.info(
-            "[ANNOUNCE:%s] %s | %s%s",
+            "[ANNOUNCE:%s] %s | %s%s%s",
             area.upper(),
             title,
             body,
-            f" (expires: {expires_at.strftime('%Y-%m-%dT%H:%M:%SZ')})" if expires_at else "",
+            ref_part,
+            expires_part,
         )
         return ChannelResult(channel=self.name, ok=True)
 
@@ -338,7 +357,14 @@ class EFAppChannel(BaseChannel):
         self.token = token
         self.author = author
 
-    def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
+    def send(
+        self,
+        title: str,
+        body: str,
+        area: str,
+        expires_at=None,
+        reference: Optional[str] = None,
+    ) -> ChannelResult:
         """
         Post an announcement to the EF App.
         
@@ -347,6 +373,7 @@ class EFAppChannel(BaseChannel):
             body (str): Announcement content.
             area (str): Internal announcement area name.
             expires_at: Optional expiration timestamp for the announcement.
+            reference: Optional reference identifier (unused by EF App).
         
         Returns:
             ChannelResult: The posting outcome, including the remote announcement ID on success.
@@ -434,12 +461,20 @@ class EFSchedBotChannel(BaseChannel):
         self.api_base = api_base.rstrip("/")
         self.token = token
 
-    def send(self, title: str, body: str, area: str, expires_at=None) -> ChannelResult:
+    def send(
+        self,
+        title: str,
+        body: str,
+        area: str,
+        expires_at=None,
+        reference: Optional[str] = None,
+    ) -> ChannelResult:
         """
         Send a pending notification through the EFSched Bot API.
         
         Parameters:
             expires_at: Optional timestamp at which the notification expires.
+            reference: Optional reference identifier (e.g. "{code}-{slot}").
         
         Returns:
             ChannelResult: The notification result, including its remote ID on success or an error message on failure.
@@ -470,6 +505,8 @@ class EFSchedBotChannel(BaseChannel):
         }
         if expires_at is not None:
             payload["expires_at"] = expires_at.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        if reference:
+            payload["reference"] = reference
 
         url = f"{self.api_base}/v1/notifications"
         headers = {
@@ -559,6 +596,7 @@ def dispatch_delay(
     end=None,
     room=None,
     tz=None,
+    reference: Optional[str] = None,
 ) -> DispatchResult:
     """
     Format and dispatch a delay announcement through all configured channels.
@@ -571,6 +609,7 @@ def dispatch_delay(
         end: Optional ISO end timestamp used to calculate expiration.
         room: Optional room name.
         tz: Optional timezone used to format the start time.
+        reference: Optional reference identifier (e.g. "{code}-{slot}").
     
     Returns:
         DispatchResult: Results from each configured channel.
@@ -586,7 +625,15 @@ def dispatch_delay(
 
     result = DispatchResult()
     for channel in _get_channels():
-        result.results.append(channel.send(subject, body, area="delay", expires_at=expires_at))
+        result.results.append(
+            channel.send(
+                subject,
+                body,
+                area="delay",
+                expires_at=expires_at,
+                reference=reference,
+            )
+        )
     return result
 
 
@@ -600,6 +647,7 @@ def dispatch_change(
     new_end=None,
     new_room=None,
     tz=None,
+    reference: Optional[str] = None,
 ) -> DispatchResult:
     """
     Format and dispatch an announcement for a new, cancelled, or rescheduled event.
@@ -615,6 +663,7 @@ def dispatch_change(
         new_end: Updated event end timestamp.
         new_room: Updated event room.
         tz: Time zone used to format timestamps.
+        reference: Optional reference identifier (e.g. "{code}-{slot}").
     
     Returns:
         DispatchResult: Results from sending the announcement through all configured
@@ -641,5 +690,13 @@ def dispatch_change(
 
     result = DispatchResult()
     for channel in _get_channels():
-        result.results.append(channel.send(subject, body, area=area, expires_at=expires_at))
+        result.results.append(
+            channel.send(
+                subject,
+                body,
+                area=area,
+                expires_at=expires_at,
+                reference=reference,
+            )
+        )
     return result

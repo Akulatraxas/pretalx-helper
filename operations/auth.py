@@ -10,8 +10,9 @@ Groups are matched against the following env vars (all comma-separated lists
 of IDP group IDs):
 
   READ_GROUPS   / WRITE_GROUPS
-      Legacy "admin" groups — grant full read/write access across all domains.
-      Write implies read. Users in these groups pass every require_* check.
+      Legacy global-access groups.
+      READ_GROUPS grants read access across all domains.
+      WRITE_GROUPS grants write and read access across all domains.
 
   READ_GROUPS_EVENTS   / WRITE_GROUPS_EVENTS
       Read/write access for the Events, Resources, and Output pages/tabs.

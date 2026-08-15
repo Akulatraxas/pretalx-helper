@@ -14,12 +14,18 @@
 <header class="app-header">
     <div class="header-inner">
         <div class="header-brand">
-            <span class="brand-icon">⚙</span>
-            <span class="brand-title">Operations</span>
+            <a href="{{ base_path }}/" class="brand-link" title="Operations Overview">
+                <span class="brand-icon">⚙</span>
+                <span class="brand-title">Operations</span>
+            </a>
             <span class="brand-subtitle" id="event-name-badge">—</span>
         </div>
 
         <nav class="main-nav" role="navigation" aria-label="Main navigation">
+            <a href="{{ base_path }}/" class="nav-link {% if page == 'index' %}active{% endif %}" id="nav-home">
+                <span class="nav-icon">🏠</span> Main
+            </a>
+            {% if not user or user.can_read_events %}
             <a href="{{ base_path }}/events"     class="nav-link {% if page == 'events' %}active{% endif %}"     id="nav-events">
                 <span class="nav-icon">📋</span> Events
                 <span class="conflict-badge hidden" id="nav-conflict-badge">0</span>
@@ -30,15 +36,20 @@
             <a href="{{ base_path }}/output"     class="nav-link {% if page == 'output' %}active{% endif %}"     id="nav-output">
                 <span class="nav-icon">📄</span> Output
             </a>
+            {% endif %}
+            {% if not user or user.can_read_operations %}
             <a href="{{ base_path }}/operations" class="nav-link {% if page == 'operations' %}active{% endif %}" id="nav-operations">
                 <span class="nav-icon">🎯</span> Operations
             </a>
             <a href="{{ base_path }}/occupancy"  class="nav-link {% if page == 'occupancy' %}active{% endif %}"  id="nav-occupancy">
                 <span class="nav-icon">📊</span> Occupancy
             </a>
+            {% endif %}
+            {% if not user or user.can_read_announcements %}
             <a href="{{ base_path }}/delays"    class="nav-link {% if page == 'delays' %}active{% endif %}"    id="nav-delays">
                 <span class="nav-icon">⏱</span> Delays
             </a>
+            {% endif %}
         </nav>
 
         <!-- Mobile hamburger button (hidden on desktop via CSS) -->
@@ -70,6 +81,10 @@
 
 <!-- Mobile nav dropdown (hidden on desktop via CSS) -->
 <div class="mobile-nav-dropdown hidden" id="mobile-nav-dropdown" role="navigation" aria-label="Mobile navigation">
+    <a href="{{ base_path }}/" class="mobile-nav-link {% if page == 'index' %}active{% endif %}">
+        <span class="nav-icon">🏠</span> Overview
+    </a>
+    {% if not user or user.can_read_events %}
     <a href="{{ base_path }}/events"     class="mobile-nav-link {% if page == 'events' %}active{% endif %}">
         <span class="nav-icon">📋</span> Events
         <span class="conflict-badge hidden" id="mobile-conflict-badge">0</span>
@@ -80,15 +95,20 @@
     <a href="{{ base_path }}/output"     class="mobile-nav-link {% if page == 'output' %}active{% endif %}">
         <span class="nav-icon">📄</span> Output
     </a>
+    {% endif %}
+    {% if not user or user.can_read_operations %}
     <a href="{{ base_path }}/operations" class="mobile-nav-link {% if page == 'operations' %}active{% endif %}">
         <span class="nav-icon">🎯</span> Operations
     </a>
     <a href="{{ base_path }}/occupancy"  class="mobile-nav-link {% if page == 'occupancy' %}active{% endif %}">
         <span class="nav-icon">📊</span> Occupancy
     </a>
+    {% endif %}
+    {% if not user or user.can_read_announcements %}
     <a href="{{ base_path }}/delays"    class="mobile-nav-link {% if page == 'delays' %}active{% endif %}">
         <span class="nav-icon">⏱</span> Delays
     </a>
+    {% endif %}
 </div>
 
 <main class="main-content" id="main-content">

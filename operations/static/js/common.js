@@ -147,15 +147,17 @@ function fmtDate(isoStr) {
         }
     } catch (_) { /* non-fatal */ }
 
-    // Conflict badge on the Events nav link
-    try {
-        const c     = await apiFetch('/api/conflicts');
-        const badge = document.getElementById('nav-conflict-badge');
-        if (badge && c.total > 0) {
-            badge.textContent = c.total;
-            badge.classList.remove('hidden');
-        }
-    } catch (_) { /* non-fatal */ }
+    // Conflict badge on the Events nav link (only if user has events access)
+    const badge = document.getElementById('nav-conflict-badge');
+    if (badge) {
+        try {
+            const c = await apiFetch('/api/conflicts');
+            if (c && c.total > 0) {
+                badge.textContent = c.total;
+                badge.classList.remove('hidden');
+            }
+        } catch (_) { /* non-fatal */ }
+    }
 })();
 
 // ---------------------------------------------------------------------------

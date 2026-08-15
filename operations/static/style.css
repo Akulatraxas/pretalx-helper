@@ -8,6 +8,7 @@
 @import url('css/components.css');
 
 /* --- Page-specific Styles --- */
+@import url('css/pages/index.css');
 @import url('css/pages/events.css');
 @import url('css/pages/resources.css');
 @import url('css/pages/output.css');

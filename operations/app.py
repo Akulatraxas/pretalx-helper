@@ -116,10 +116,11 @@ def add_security_headers(response):
 # ---------------------------------------------------------------------------
 
 @app.route(f"{BASE_PATH}/")
-@auth.require_read_events
-def index():
-    """Redirects requests from the base path to the events page."""
-    return redirect(url_for("page_events"))
+@app.route(f"{BASE_PATH}")
+@auth.require_read_any
+def page_index():
+    """Render the landing / index overview page."""
+    return render_template("index.html", page="index")
 
 
 @app.route(f"{BASE_PATH}/resources")

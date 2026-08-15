@@ -126,6 +126,8 @@ def get_current_user():
             "can_read":                True,
             "can_write":               True,
             "can_admin":               True,
+            "can_read_any":            True,
+            "can_write_any":           True,
             "can_read_events":         True,
             "can_write_events":        True,
             "can_read_operations":     True,
@@ -148,6 +150,9 @@ def get_current_user():
     can_write_announcements = is_admin_write or bool(WRITE_GROUPS_ANNOUNCEMENTS & groups)
     can_read_announcements  = is_admin_read  or bool(READ_GROUPS_ANNOUNCEMENTS & groups) or can_write_announcements
 
+    can_read_any  = is_admin_read or can_read_events or can_read_operations or can_read_announcements
+    can_write_any = is_admin_write or can_write_events or can_write_operations or can_write_announcements
+
     return {
         "email":                   email,
         "username":                username or email or "anonymous",
@@ -156,6 +161,8 @@ def get_current_user():
         "can_read":                is_admin_read,
         "can_write":               is_admin_write,
         "can_admin":               is_admin_write,
+        "can_read_any":            can_read_any,
+        "can_write_any":           can_write_any,
         # Domain-scoped flags
         "can_read_events":         can_read_events,
         "can_write_events":        can_write_events,
@@ -223,73 +230,13 @@ require_write_operations = _make_decorator("can_write_operations", "write:operat
 require_read_announcements  = _make_decorator("can_read_announcements",  "read:announcements")
 require_write_announcements = _make_decorator("can_write_announcements", "write:announcements")
 
+# Any-domain access (e.g. landing / index page — open to any user with read access in any group)
+require_read_any  = _make_decorator("can_read_any",  "read:any")
+require_write_any = _make_decorator("can_write_any", "write:any")
+
 # ---------------------------------------------------------------------------
 # Legacy aliases (kept for any callers not yet migrated)
 # ---------------------------------------------------------------------------
+require_read  = require_read_any
+require_write = require_write_any
 
-def require_read(f):
-    """
-    Deprecated legacy decorator that grants access to users with read permission in any domain or administrative read permission.
-    
-    Parameters:
-        f (callable): View function to protect.
-    
-    Returns:
-        callable: Decorated view function that denies unauthorized requests with a 403 response.
-    """
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        """
-        Authorize access to views requiring read permission in any supported domain.
-        
-        Returns:
-            The wrapped view response when access is granted; otherwise, a 403 response.
-        """
-        user = get_current_user()
-        g.user = user
-        has_any_read = (
-            user["can_read"]
-            or user["can_read_events"]
-            or user["can_read_operations"]
-            or user["can_read_announcements"]
-        )
-        if not has_any_read:
-            logger.warning("403 read denied (legacy): %s", user.get("email"))
-            if request.path.startswith("/api/") or request.is_json:
-                return jsonify({"error": "Access denied"}), 403
-            return "403 Access Denied — insufficient permissions", 403
-        return f(*args, **kwargs)
-    return decorated
-
-
-def require_write(f):
-    """
-    Require write access in at least one supported domain.
-    
-    Parameters:
-        f (callable): The function to protect.
-    
-    Returns:
-        callable: A wrapped function that returns a JSON 403 response when access is denied.
-    """
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        """
-        Authorize access for users with write permission in any supported domain.
-        
-        Returns:
-            The wrapped view result when authorized, or a JSON 403 response when access is denied.
-        """
-        user = get_current_user()
-        g.user = user
-        has_any_write = (
-            user["can_write"]
-            or user["can_write_events"]
-            or user["can_write_operations"]
-            or user["can_write_announcements"]
-        )
-        if not has_any_write:
-            logger.warning("403 write denied (legacy): %s", user.get("email"))
-            return jsonify({"error": "Write access denied"}), 403
-        return f(*args, **kwargs)
-    return decorated

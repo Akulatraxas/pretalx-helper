@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+
+{% block content %}
+<div class="page-index">
+
+    <!-- Hero / Welcome Header -->
+    <header class="landing-hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="hero-badge-icon">⚙️</span>
+                <span>Eurofurence Operations</span>
+            </div>
+            <h1 class="hero-title">Resource &amp; Operations Portal</h1>
+            <p class="hero-subtitle">
+                Centralized equipment inventory, live schedule management, room occupancy tracking, and operational dispatch for Eurofurence staff.
+            </p>
+        </div>
+
+        {% if user %}
+        <div class="user-access-summary">
+            <div class="user-access-header">
+                <div class="user-avatar-lg">{{ (user.username or user.email or '?')[0].upper() }}</div>
+                <div class="user-access-info">
+                    <span class="user-access-name">{{ user.username or user.email }}</span>
+                    <span class="user-access-email">{{ user.email }}</span>
+                </div>
+                {% if user.can_admin %}
+                <span class="badge-role admin" title="Full administrator access">Admin (Full Access)</span>
+                {% elif user.can_write_any %}
+                <span class="badge-role write" title="Read & Write permissions">Staff (Read / Write)</span>
+                {% else %}
+                <span class="badge-role read" title="Read only permissions">Staff (Read Only)</span>
+                {% endif %}
+            </div>
+
+            <div class="user-permissions-list">
+                <span class="perm-tag {% if user.can_read_events %}perm-active{% else %}perm-inactive{% endif %}">
+                    <span class="perm-dot"></span> Events {% if user.can_write_events %}(RW){% elif user.can_read_events %}(RO){% else %}(No access){% endif %}
+                </span>
+                <span class="perm-tag {% if user.can_read_operations %}perm-active{% else %}perm-inactive{% endif %}">
+                    <span class="perm-dot"></span> Operations {% if user.can_write_operations %}(RW){% elif user.can_read_operations %}(RO){% else %}(No access){% endif %}
+                </span>
+                <span class="perm-tag {% if user.can_read_announcements %}perm-active{% else %}perm-inactive{% endif %}">
+                    <span class="perm-dot"></span> Announcements {% if user.can_write_announcements %}(RW){% elif user.can_read_announcements %}(RO){% else %}(No access){% endif %}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+    </header>
+
+    <!-- Main Navigation Cards Grid -->
+    <section class="landing-section" aria-label="Available Sections">
+        <div class="landing-section-header">
+            <h2 class="landing-section-title">Available Sections</h2>
+            <p class="landing-section-subtitle">Select a tool or dashboard to get started</p>
+        </div>
+
+        <div class="landing-cards-grid">
+
+            <!-- Card: Events -->
+            {% if not user or user.can_read_events %}
+            <article class="landing-card" id="card-events">
+                <div class="landing-card-header">
+                    <div class="landing-card-title-group">
+                        <span class="landing-card-icon">📋</span>
+                        <div>
+                            <h3 class="landing-card-title">Events &amp; Submissions</h3>
+                            <span class="landing-card-category">Planning &amp; Staging</span>
+                        </div>
+                    </div>
+                    {% if user and user.can_write_events %}
+                    <span class="badge-role write" title="Read & Write access">Read / Write</span>
+                    {% else %}
+                    <span class="badge-role read" title="Read Only access">Read Only</span>
+                    {% endif %}
+                </div>
+
+                <div class="landing-card-body">
+                    <p class="landing-card-desc">
+                        Browse the convention schedule and submissions. Assign physical equipment (projectors, audio gear, cables) and add department-specific comments to talks and panels. Monitor scheduling conflicts and speaker Telegram handles.
+                </div>
+
+                <div class="landing-card-footer">
+                    <a href="{{ base_path }}/events" class="btn btn-primary btn-landing">Open Events &rarr;</a>
+                </div>
+            </article>
+            {% endif %}
+
+            <!-- Card: Resources -->
+            {% if not user or user.can_read_events %}
+            <article class="landing-card" id="card-resources">
+                <div class="landing-card-header">
+                    <div class="landing-card-title-group">
+                        <span class="landing-card-icon">📦</span>
+                        <div>
+                            <h3 class="landing-card-title">Resource Inventory</h3>
+                            <span class="landing-card-category">Inventory Management</span>
+                        </div>
+                    </div>
+                    {% if user and user.can_write_events %}
+                    <span class="badge-role write" title="Read & Write access">Read / Write</span>
+                    {% else %}
+                    <span class="badge-role read" title="Read Only access">Read Only</span>
+                    {% endif %}
+                </div>
+
+                <div class="landing-card-body">
+                    <p class="landing-card-desc">
+                        Maintain the pool of physical hardware and operational equipment. Configure inventory counts, assign department ownership (Conops, FS-Support, CCH), and inspect real-time usage across all scheduled events.
+                    </p>
+                </div>
+
+                <div class="landing-card-footer">
+                    <a href="{{ base_path }}/resources" class="btn btn-primary btn-landing">Manage Resources &rarr;</a>
+                </div>
+            </article>
+            {% endif %}
+
+            <!-- Card: Output -->
+            {% if not user or user.can_read_events %}
+            <article class="landing-card" id="card-output">
+                <div class="landing-card-header">
+                    <div class="landing-card-title-group">
+                        <span class="landing-card-icon">📄</span>
+                        <div>
+                            <h3 class="landing-card-title">Department Output</h3>
+                            <span class="landing-card-category">Reporting &amp; Export</span>
+                        </div>
+                    </div>
+                    {% if user and user.can_write_events %}
+                    <span class="badge-role write" title="Read & Write access">Read / Write</span>
+                    {% else %}
+                    <span class="badge-role read" title="Read Only access">Read Only</span>
+                    {% endif %}
+                </div>
+
+                <div class="landing-card-body">
+                    <p class="landing-card-desc">
+                        Consolidated runsheets of scheduled events expanded by slot and filtered by department. Review assigned gear, staff notes, and speaker contacts, with one-click CSV export for offline coordination.
+                    </p>
+                </div>
+
+                <div class="landing-card-footer">
+                    <a href="{{ base_path }}/output" class="btn btn-primary btn-landing">View Output &rarr;</a>
+                </div>
+            </article>
+            {% endif %}
+
+            <!-- Card: Operations -->
+            {% if not user or user.can_read_operations %}
+            <article class="landing-card" id="card-operations">
+                <div class="landing-card-header">
+                    <div class="landing-card-title-group">
+                        <span class="landing-card-icon">🎯</span>
+                        <div>
+                            <h3 class="landing-card-title">Operations Feed &amp; Kanban</h3>
+                            <span class="landing-card-category">Live Dispatch</span>
+                        </div>
+                    </div>
+                    {% if user and user.can_write_operations %}
+                    <span class="badge-role write" title="Read & Write access">Read / Write</span>
+                    {% else %}
+                    <span class="badge-role read" title="Read Only access">Read Only</span>
+                    {% endif %}
+                </div>
+
+                <div class="landing-card-body">
+                    <p class="landing-card-desc">
+                        Live operational dispatch feed of upcoming events within a configurable lookahead window. Staff can claim, track, and complete delivery tasks, and print standardized physical Kanban dispatch cards.
+                    </p>
+                </div>
+
+                <div class="landing-card-footer">
+                    <a href="{{ base_path }}/operations" class="btn btn-primary btn-landing">Open Operations &rarr;</a>
+                </div>
+            </article>
+            {% endif %}
+
+            <!-- Card: Occupancy -->
+            {% if not user or user.can_read_operations %}
+            <article class="landing-card" id="card-occupancy">
+                <div class="landing-card-header">
+                    <div class="landing-card-title-group">
+                        <span class="landing-card-icon">📊</span>
+                        <div>
+                            <h3 class="landing-card-title">Room Occupancy</h3>
+                            <span class="landing-card-category">Conops Crowd Tracking</span>
+                        </div>
+                    </div>
+                    {% if user and user.can_write_operations %}
+                    <span class="badge-role write" title="Read & Write access">Read / Write</span>
+                    {% else %}
+                    <span class="badge-role read" title="Read Only access">Read Only</span>
+                    {% endif %}
+                </div>
+
+                <div class="landing-card-body">
+                    <p class="landing-card-desc">
+                        Mobile-optimized tool for Conops roving staff to record crowd density ratings across convention rooms in real time, helping monitor venue room capacity and crowd safety flow.
+                    </p>
+                </div>
+
+                <div class="landing-card-footer">
+                    <a href="{{ base_path }}/occupancy" class="btn btn-primary btn-landing">Track Occupancy &rarr;</a>
+                </div>
+            </article>
+            {% endif %}
+
+            <!-- Card: Delays & Announcements -->
+            {% if not user or user.can_read_announcements %}
+            <article class="landing-card" id="card-delays">
+                <div class="landing-card-header">
+                    <div class="landing-card-title-group">
+                        <span class="landing-card-icon">⏱</span>
+                        <div>
+                            <h3 class="landing-card-title">Delays &amp; Announcements</h3>
+                            <span class="landing-card-category">Attendee Broadcasts</span>
+                        </div>
+                    </div>
+                    {% if user and user.can_write_announcements %}
+                    <span class="badge-role write" title="Read & Write access">Read / Write</span>
+                    {% else %}
+                    <span class="badge-role read" title="Read Only access">Read Only</span>
+                    {% endif %}
+                </div>
+
+                <div class="landing-card-body">
+                    <p class="landing-card-desc">
+                        Log event start delays with custom staff comments and manage detected schedule changes between Pretalx schedule version updates. Dispatch live multi-channel announcements to convention attendees.
+                    </p>
+                </div>
+
+                <div class="landing-card-footer">
+                    <a href="{{ base_path }}/delays" class="btn btn-primary btn-landing">Manage Delays &rarr;</a>
+                </div>
+            </article>
+            {% endif %}
+
+            <!-- Card: Contact, Source & Attributions (ALWAYS SHOWN) -->
+            <article class="landing-card landing-card-about" id="card-about">
+                <div class="landing-card-header">
+                    <div class="landing-card-title-group">
+                        <span class="landing-card-icon">ℹ️</span>
+                        <div>
+                            <h3 class="landing-card-title">About, Source &amp; Support</h3>
+                            <span class="landing-card-category">Information &amp; Credits</span>
+                        </div>
+                    </div>
+                    <span class="badge-role info">All Staff</span>
+                </div>
+
+                <div class="landing-card-body">
+                    <div class="about-section">
+                        <h4 class="about-section-heading">Source Repository</h4>
+                        <p class="about-section-text">
+                            Developed as part of the Eurofurence convention tooling thingies.
+                        </p>
+                        <a href="https://github.com/Akulatraxas/pretalx-helper"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="about-link github-link">
+                            <span class="about-link-icon">🐙</span>
+                            <span>github.com/Akulatraxas/pretalx-helper</span>
+                            <span class="about-link-arrow">&nearr;</span>
+                        </a>
+                    </div>
+
+                    <div class="about-section">
+                        <h4 class="about-section-heading">Contact &amp; Support</h4>
+                        <ul class="about-contact-list">
+                            <li>
+                                <span class="contact-icon">💬</span>
+                                <span><strong>Conops &amp; IT Staff:</strong> Contact the Programming or Conops team on internal EF channels.</span>
+                            </li>
+                            <li>
+                                <span class="contact-icon">🐛</span>
+                                <span><strong>Bugs &amp; Feature Requests:</strong> File an issue on <a href="https://github.com/Akulatraxas/pretalx-helper/issues" target="_blank" rel="noopener noreferrer" class="link-inline">GitHub Issues &nearr;</a></span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="about-section">
+                        <h4 class="about-section-heading">Attributions</h4>
+                        <p class="about-section-text attributions-text">
+                            Powered by <a href="https://pretalx.org" target="_blank" rel="noopener noreferrer" class="link-inline">Pretalx</a> REST API. Integrates with the official Eurofurence App API and EFSched Telegram Bot. Typography by <a href="https://rsms.me/inter/" target="_blank" rel="noopener noreferrer" class="link-inline">Inter</a> and <a href="https://fonts.google.com/specimen/Outfit" target="_blank" rel="noopener noreferrer" class="link-inline">Outfit</a>.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="landing-card-footer">
+                    <a href="https://github.com/Akulatraxas/pretalx-helper"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="btn btn-ghost btn-landing">
+                        View Repository &nearr;
+                    </a>
+                </div>
+            </article>
+
+        </div>
+    </section>
+
+</div>
+{% endblock %}

@@ -10,8 +10,8 @@ Output channels (each implements `send(title, body, area) -> ChannelResult`):
 
 Usage (from app.py):
   import announcements
-  results = announcements.dispatch_delay(title, minutes, comment, start, room, tz, reference)
-  results = announcements.dispatch_change(title, change_types, old_start, ..., tz, reference)
+  results = announcements.dispatch_delay(title=title, minutes=minutes, comment=comment, start=start, end=end, room=room, tz=tz, reference=reference)
+  results = announcements.dispatch_change(title=title, change_types=change_types, old_start=old_start, old_end=old_end, old_room=old_room, new_start=new_start, new_end=new_end, new_room=new_room, tz=tz, reference=reference)
 """
 
 from __future__ import annotations

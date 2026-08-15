@@ -1192,6 +1192,7 @@ def api_slot_set_delay(code, slot_index):
         end=slot_info.get("end"),
         room=slot_info.get("room"),
         tz=event_tz,
+        reference=f"{code}-{slot_index}",
     )
 
     return jsonify({
@@ -1281,6 +1282,7 @@ def api_change_send(change_id):
         new_end=change.get("new_end"),
         new_room=change.get("new_room"),
         tz=event_tz,
+        reference=f"{change['submission_code']}-{change['slot_index']}",
     )
 
     return jsonify({

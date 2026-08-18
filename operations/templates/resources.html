@@ -9,7 +9,7 @@
             <h1 class="page-title">Resources</h1>
             <p class="page-subtitle">Physical resources available for assignment to events</p>
         </div>
-        {% if user and user.can_write %}
+        {% if user and user.can_write_events %}
         <button class="btn btn-primary" id="btn-add-resource" aria-expanded="false">
             <span>+</span> Add Resource
         </button>

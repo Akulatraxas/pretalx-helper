@@ -11,6 +11,16 @@
 </head>
 <body>
 
+{% set page_can_write = (
+    user and (
+        user.can_admin or
+        (page in ['events', 'resources', 'output'] and user.can_write_events) or
+        (page in ['operations', 'occupancy'] and user.can_write_operations) or
+        (page == 'delays' and user.can_write_announcements) or
+        (page == 'index' and user.can_write_any)
+    )
+) or (not user) %}
+
 <header class="app-header">
     <div class="header-inner">
         <div class="header-brand">
@@ -68,7 +78,7 @@
             <div class="user-badge" title="{{ user.email }}">
                 <span class="user-avatar">{{ (user.username or user.email or '?')[0].upper() }}</span>
                 <span class="user-name">{{ user.username or user.email }}</span>
-                {% if user.can_write %}
+                {% if page_can_write %}
                 <span class="user-role write" title="Read/Write">RW</span>
                 {% else %}
                 <span class="user-role read" title="Read only">RO</span>
@@ -126,7 +136,7 @@
         id="common-script"
         data-base-path="{{ base_path }}"
         data-departments="{{ departments | tojson | forceescape }}"
-        data-can-write="{{ 'true' if (user and user.can_write) else 'false' }}">
+        data-can-write="{{ 'true' if page_can_write else 'false' }}">
 </script>
 {% block scripts %}{% endblock %}
 

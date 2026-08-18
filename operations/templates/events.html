@@ -72,7 +72,7 @@
             <section class="detail-section" id="detail-resources-section">
                 <h3 class="section-title">Resources</h3>
 
-                {% if user and user.can_write %}
+                {% if user and user.can_write_events %}
                 <div class="resource-add-row" id="resource-add-row">
                     <div class="autocomplete-wrapper">
                         <input class="form-input" type="text" id="resource-search-input"
@@ -102,7 +102,7 @@
             <section class="detail-section" id="detail-comments-section">
                 <h3 class="section-title">Comments</h3>
 
-                {% if user and user.can_write %}
+                {% if user and user.can_write_events %}
                 <div class="comment-add-row" id="comment-add-row">
                     <textarea class="form-input form-textarea" id="comment-text-input"
                               placeholder="Add a note or instruction…" rows="2"></textarea>

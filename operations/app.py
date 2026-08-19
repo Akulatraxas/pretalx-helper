@@ -648,6 +648,8 @@ def api_upcoming():
         all (str): Set to ``"1"`` to include submissions without resources or comments.
         at (str): ISO-formatted reference time in the event timezone for testing.
         mine (str): Set to ``"1"`` to include only slots assigned to the current user.
+        running (str): Set to ``"1"`` to also include currently-running events
+            (started but not yet ended).
     
     Returns:
         JSON response containing matching slots, the effective time window, reference
@@ -667,6 +669,7 @@ def api_upcoming():
         hours = 4
 
     include_all = request.args.get("all") == "1"
+    include_running = request.args.get("running") == "1"
 
     # Event local timezone (used to interpret naive ?at= values)
     event_tz = EVENT_TZ
@@ -703,7 +706,8 @@ def api_upcoming():
         if not start:
             continue
 
-        # Parse slot start time
+        # Parse slot start and end times
+        end = slot.get("end", "")
         try:
             slot_start = datetime.fromisoformat(start)
             if slot_start.tzinfo is None:
@@ -711,7 +715,21 @@ def api_upcoming():
         except ValueError:
             continue
 
-        if not (now <= slot_start <= deadline):
+        slot_end = None
+        if end:
+            try:
+                slot_end = datetime.fromisoformat(end)
+                if slot_end.tzinfo is None:
+                    slot_end = slot_end.replace(tzinfo=timezone.utc)
+            except ValueError:
+                pass
+
+        # Determine whether this slot is upcoming (starts within the window)
+        # or currently running (started before now, ends after now).
+        is_upcoming = now <= slot_start <= deadline
+        is_running  = include_running and slot_end is not None and slot_start < now <= slot_end
+
+        if not (is_upcoming or is_running):
             continue
 
         if codes_with_data is not None and code not in codes_with_data:
@@ -736,6 +754,7 @@ def api_upcoming():
             "resources":       assignments["resources"],
             "comments":        assignments["comments"],
             "has_conflict":    code in conflict_codes,
+            "is_running":      bool(is_running),
         })
 
     # Enrich with operation_events state (bulk query)

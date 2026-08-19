@@ -196,6 +196,17 @@
     filter: opacity(0.4);
 }
 
+.kanban-card.ops-card-running {
+    border-left: 3px solid var(--accent-green, #22c55e);
+    background-image: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 6px,
+        rgba(34, 197, 94, 0.06) 6px,
+        rgba(34, 197, 94, 0.06) 12px
+    );
+}
+
 .kanban-card-status-row {
     margin-bottom: 6px;
 }
@@ -219,6 +230,12 @@
     background: rgba(100, 100, 120, 0.15);
     color: var(--text-muted);
     border: 1px solid var(--border-subtle);
+}
+
+.ops-badge-running {
+    background: rgba(34, 197, 94, 0.15);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.4);
 }
 
 /* Event detail modal */

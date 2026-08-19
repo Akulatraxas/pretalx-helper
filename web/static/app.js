@@ -1544,7 +1544,6 @@
         // Switch to today's tab
         currentDayIndex = todayIndex;
         updateActiveDayTab();
-        pushURLState();
         render();
 
         // Scroll to the current time after the DOM has settled

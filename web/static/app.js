@@ -1515,7 +1515,123 @@
         }
     }
 
+    /**
+     * When no URL params are active (clean page load), automatically jump to
+     * today's day tab and scroll the view to the current time.
+     * Does nothing if today is not within the event days.
+     */
+    function autoJumpToCurrentDay() {
+        if (!scheduleData || !scheduleData.days) return;
+
+        // Today's date string in local time (YYYY-MM-DD)
+        var now = new Date();
+        var todayStr =
+            now.getFullYear() + "-" +
+            String(now.getMonth() + 1).padStart(2, "0") + "-" +
+            String(now.getDate()).padStart(2, "0");
+
+        // Find the day index whose date matches today
+        var todayIndex = -1;
+        for (var d = 0; d < scheduleData.days.length; d++) {
+            if (scheduleData.days[d].date === todayStr) {
+                todayIndex = d;
+                break;
+            }
+        }
+
+        if (todayIndex === -1) return; // today is not an event day — do nothing
+
+        // Switch to today's tab
+        currentDayIndex = todayIndex;
+        updateActiveDayTab();
+        render();
+
+        // Scroll to the current time after the DOM has settled
+        requestAnimationFrame(function () {
+            scrollToCurrentTime(now);
+        });
+    }
+
+    /**
+     * Scroll the current view to the position corresponding to `now`.
+     *
+     * Calendar view: find the last time-group whose badge text (HH:MM) is <=
+     * now and scroll it into view, so the current or most recently started
+     * block of events is at the top. Falls back to the first group if nothing
+     * has started yet.
+     *
+     * Rooms view: use the timeline pixel-per-minute scale to compute the Y
+     * offset from the earliest slot and scroll the page there.
+     */
+    function scrollToCurrentTime(now) {
+        var nowHHMM =
+            String(now.getHours()).padStart(2, "0") + ":" +
+            String(now.getMinutes()).padStart(2, "0");
+
+        if (currentView === "calendar") {
+            var groups = viewCalendar.querySelectorAll(".time-group");
+            var target = null;
+            groups.forEach(function (g) {
+                var badge = g.querySelector(".time-badge");
+                if (badge && badge.textContent <= nowHHMM) {
+                    target = g;
+                }
+            });
+            // Nothing started yet — scroll to first group
+            if (!target && groups.length > 0) target = groups[0];
+            if (target) {
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        } else {
+            // Rooms view: compute pixel offset using timeline scale constants.
+            var TIMELINE_PX_PER_MIN = 3;
+            var TIMELINE_PADDING = 16;
+
+            var daySlots = (scheduleData.days[currentDayIndex] || {}).slots || [];
+
+            // Find earliest slot start to use as timeline origin
+            var dayStartMinutes = 8 * 60; // fallback: 08:00
+            daySlots.forEach(function (slot) {
+                if (slot.start) {
+                    var hh = parseInt(slot.start.substring(11, 13), 10);
+                    var mm = parseInt(slot.start.substring(14, 16), 10);
+                    var mins = hh * 60 + mm;
+                    if (mins < dayStartMinutes) dayStartMinutes = mins;
+                }
+            });
+
+            var nowMinutes = now.getHours() * 60 + now.getMinutes();
+            var offsetPx = TIMELINE_PADDING + (nowMinutes - dayStartMinutes) * TIMELINE_PX_PER_MIN;
+
+            // Subtract sticky header so the current-time position lands near the top
+            var headerEl = document.querySelector(".app-header");
+            var headerHeight = headerEl ? headerEl.offsetHeight : 70;
+            window.scrollTo({ top: Math.max(0, offsetPx - headerHeight), behavior: "smooth" });
+        }
+    }
+
+    /**
+     * Returns true if any URL parameter that encodes user-chosen state is present.
+     * `view` alone is also considered intentional, so it counts as "active".
+     * Used to skip auto-jump on clean (no-param) page loads only.
+     */
+    function hasActiveURLParams() {
+        var params = new URLSearchParams(window.location.search);
+        return (
+            params.has("day") ||
+            params.has("search") ||
+            params.has("tracks") ||
+            params.has("tags") ||
+            params.has("speakers") ||
+            params.has("rooms") ||
+            params.has("event") ||
+            params.has("view")
+        );
+    }
+
     // --- Init ---
+    // Capture whether the URL is clean before readURLState() mutates state.
+    var _cleanLoad = !hasActiveURLParams();
     // Read URL state first (sets view, day, filters) then load data.
     var _pendingEventKey = readURLState();
     loadData().then(function () {
@@ -1527,6 +1643,9 @@
         render();
         if (_pendingEventKey) {
             openEventByStableId(_pendingEventKey);
+        } else if (_cleanLoad) {
+            // No URL params — jump to today's day and scroll to current time
+            autoJumpToCurrentDay();
         }
     });
 })();

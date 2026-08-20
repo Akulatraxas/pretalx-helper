@@ -127,7 +127,9 @@ function fmtDate(isoStr) {
 function fmtWeekday(isoStr) {
     if (!isoStr) return '';
     try {
-        return new Date(isoStr).toLocaleDateString('en-GB', { weekday: 'short' });
+        const date = new Date(isoStr);
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleDateString('en-GB', { weekday: 'short' });
     } catch (_) { return ''; }
 }
 

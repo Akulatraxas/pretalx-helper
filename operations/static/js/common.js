@@ -124,6 +124,15 @@ function fmtDate(isoStr) {
     } catch (_) { return isoStr.slice(0, 10); }
 }
 
+function fmtWeekday(isoStr) {
+    if (!isoStr) return '';
+    try {
+        const date = new Date(isoStr);
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleDateString('en-GB', { weekday: 'short' });
+    } catch (_) { return ''; }
+}
+
 // ---------------------------------------------------------------------------
 // Header initialisation — updates the cache status dot, event name badge,
 // and conflict counter badge on every page load.

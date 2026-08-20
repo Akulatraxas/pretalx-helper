@@ -168,7 +168,7 @@
         // Time + Room (same row)
         const timeRow = el('div', { cls: 'kanban-time-row' });
         const time = el('span', { cls: 'kanban-time' });
-        time.textContent = fmtTimeRange(slot.start, slot.end);
+        time.textContent = `${fmtWeekday(slot.start)} ${fmtTimeRange(slot.start, slot.end)}`;
         timeRow.appendChild(time);
         const room = el('span', { cls: 'kanban-room' });
         room.textContent = slot.room_name || '—';
@@ -509,7 +509,7 @@
 
         const timeRow = el('div', { cls: 'print-card-time-row' });
         const time = el('span', { cls: 'print-card-time' });
-        time.textContent = fmtTimeRange(slot.start, slot.end);
+        time.textContent = `${fmtWeekday(slot.start)} ${fmtTimeRange(slot.start, slot.end)}`;
         timeRow.appendChild(time);
         const room = el('span', { cls: 'print-card-room' });
         room.textContent = slot.room_name || '—';

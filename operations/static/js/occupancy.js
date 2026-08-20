@@ -10,7 +10,7 @@
 (function () {
     'use strict';
 
-    const AUTO_REFRESH_MS = 30_000;
+    const AUTO_REFRESH_MS = 120 * 1000;
 
     // -------------------------------------------------------------------------
     // Rating config — colour + icon per level

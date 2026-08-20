@@ -9,7 +9,7 @@
 
     let currentSlots = [];
     let autoRefreshTimer = null;
-    const AUTO_REFRESH_MS = 30 * 1000; // 30 s — keeps op-event state in sync across browsers
+    const AUTO_REFRESH_MS = 60 * 1000; // 60 s — keeps op-event state in sync across browsers
 
     const hoursSelect    = document.getElementById('hours-select');
     const showAllCheck   = document.getElementById('ops-show-all');

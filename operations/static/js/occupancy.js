@@ -289,7 +289,7 @@
                     });
                 } catch (_) {}
             }
-            const suffix = isTest ? '' : ' — auto-refreshes every 30 s';
+            const suffix = isTest ? '' : ` — auto-refreshes every ${AUTO_REFRESH_MS / 1000} s`;
             countLabel.textContent = n + ' event' + (n !== 1 ? 's' : '') + ' in window' + refLabel + suffix;
         }
         if (liveDot) liveDot.className = 'status-dot ok';

@@ -9,7 +9,7 @@
 
     let currentSlots = [];
     let autoRefreshTimer = null;
-    const AUTO_REFRESH_MS = 30 * 1000; // 30 s — keeps op-event state in sync across browsers
+    const AUTO_REFRESH_MS = 60 * 1000; // 60 s — keeps op-event state in sync across browsers
 
     const hoursSelect    = document.getElementById('hours-select');
     const showAllCheck   = document.getElementById('ops-show-all');
@@ -462,7 +462,7 @@
                     refLabel = ` · ref: ${d.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
                 } catch (_) { }
             }
-            const refresh = isTest ? '' : ' — auto-refreshes every 30 s';
+            const refresh = isTest ? '' : ` — auto-refreshes every ${AUTO_REFRESH_MS / 1000} s`;
             countLabel.textContent = `${n} slot${n !== 1 ? 's' : ''} in the next ${hours} hour${hours > 1 ? 's' : ''}${refLabel}${refresh}`;
         }
         if (liveDot) liveDot.className = 'status-dot ok';

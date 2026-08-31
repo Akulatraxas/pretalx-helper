@@ -124,6 +124,15 @@ function fmtDate(isoStr) {
     } catch (_) { return isoStr.slice(0, 10); }
 }
 
+function fmtWeekday(isoStr) {
+    if (!isoStr) return '';
+    try {
+        const date = new Date(isoStr);
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleDateString('en-GB', { weekday: 'short' });
+    } catch (_) { return ''; }
+}
+
 // ---------------------------------------------------------------------------
 // Header initialisation — updates the cache status dot, event name badge,
 // and conflict counter badge on every page load.
@@ -147,15 +156,17 @@ function fmtDate(isoStr) {
         }
     } catch (_) { /* non-fatal */ }
 
-    // Conflict badge on the Events nav link
-    try {
-        const c     = await apiFetch('/api/conflicts');
-        const badge = document.getElementById('nav-conflict-badge');
-        if (badge && c.total > 0) {
-            badge.textContent = c.total;
-            badge.classList.remove('hidden');
-        }
-    } catch (_) { /* non-fatal */ }
+    // Conflict badge on the Events nav link (only if user has events access)
+    const badge = document.getElementById('nav-conflict-badge');
+    if (badge) {
+        try {
+            const c = await apiFetch('/api/conflicts');
+            if (c && c.total > 0) {
+                badge.textContent = c.total;
+                badge.classList.remove('hidden');
+            }
+        } catch (_) { /* non-fatal */ }
+    }
 })();
 
 // ---------------------------------------------------------------------------

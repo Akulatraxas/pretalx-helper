@@ -26,6 +26,9 @@
             <label class="filter-toggle" title="Only show events assigned to me">
                 <input type="checkbox" id="ops-show-mine"> Show mine
             </label>
+            <label class="filter-toggle" title="Also show events that have already started but not yet ended">
+                <input type="checkbox" id="ops-show-running"> Show running
+            </label>
             <label class="filter-toggle ops-test-toggle" title="Override reference time for testing">
                 <input type="checkbox" id="ops-test-mode"> 🧪 Test mode
             </label>
@@ -83,7 +86,7 @@
                 <div class="ops-modal-status" id="ops-modal-status"></div>
 
                 <!-- Action buttons -->
-                {% if user and user.can_write %}
+                {% if user and user.can_write_operations %}
                 <div class="ops-modal-actions" id="ops-modal-actions">
                     <button class="btn btn-primary btn-sm" id="ops-btn-take">✋ Take Event</button>
                     <button class="btn btn-success btn-sm" id="ops-btn-complete">✔ Complete Event</button>

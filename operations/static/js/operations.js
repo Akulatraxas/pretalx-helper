@@ -9,11 +9,12 @@
 
     let currentSlots = [];
     let autoRefreshTimer = null;
-    const AUTO_REFRESH_MS = 30 * 1000; // 30 s — keeps op-event state in sync across browsers
+    const AUTO_REFRESH_MS = 60 * 1000; // 60 s — keeps op-event state in sync across browsers
 
     const hoursSelect    = document.getElementById('hours-select');
     const showAllCheck   = document.getElementById('ops-show-all');
     const showMineCheck  = document.getElementById('ops-show-mine');
+    const showRunningCheck = document.getElementById('ops-show-running');
     const testModeCheck  = document.getElementById('ops-test-mode');
     const testAtInput    = document.getElementById('ops-test-at');
     const testBadge      = document.getElementById('ops-test-badge');
@@ -59,6 +60,7 @@
         const hours   = hoursSelect?.value || 4;
         const showAll = showAllCheck?.checked ? '&all=1' : '';
         const mine    = showMineCheck?.checked ? '&mine=1' : '';
+        const running = showRunningCheck?.checked ? '&running=1' : '';
 
         // Build optional ?at= parameter for test mode
         let atParam = '';
@@ -69,7 +71,7 @@
         showLoadingState();
 
         try {
-            const data = await apiFetch(`/api/upcoming?hours=${hours}${showAll}${mine}${atParam}`);
+            const data = await apiFetch(`/api/upcoming?hours=${hours}${showAll}${mine}${running}${atParam}`);
             currentSlots = data.slots || [];
             renderGrid();
             updateStatus(data);
@@ -117,9 +119,11 @@
     function makeKanbanCard(slot) {
         const isCompleted = slot.is_completed;
         const isAssigned  = !!slot.assigned_to;
+        const isRunning   = !!slot.is_running;
         let cls = `kanban-card${slot.has_conflict ? ' has-conflict' : ''}`;
         if (isCompleted) cls += ' ops-card-completed';
         else if (isAssigned) cls += ' ops-card-assigned';
+        if (isRunning) cls += ' ops-card-running';
 
         const card = el('div', { cls });
         card.setAttribute('role', 'button');
@@ -142,13 +146,18 @@
         const body = el('div', { cls: 'kanban-card-body' });
 
         // Status badge row
-        if (isCompleted || isAssigned) {
+        if (isRunning || isCompleted || isAssigned) {
             const statusRow = el('div', { cls: 'kanban-card-status-row' });
+            if (isRunning) {
+                const badge = el('span', { cls: 'ops-status-badge ops-badge-running' });
+                badge.textContent = '▶ Now running';
+                statusRow.appendChild(badge);
+            }
             if (isCompleted) {
                 const badge = el('span', { cls: 'ops-status-badge ops-badge-completed' });
                 badge.textContent = '✔ Completed';
                 statusRow.appendChild(badge);
-            } else {
+            } else if (isAssigned) {
                 const badge = el('span', { cls: 'ops-status-badge ops-badge-assigned' });
                 badge.textContent = `✋ ${slot.assigned_to}`;
                 statusRow.appendChild(badge);
@@ -159,7 +168,7 @@
         // Time + Room (same row)
         const timeRow = el('div', { cls: 'kanban-time-row' });
         const time = el('span', { cls: 'kanban-time' });
-        time.textContent = fmtTimeRange(slot.start, slot.end);
+        time.textContent = `${fmtWeekday(slot.start)} ${fmtTimeRange(slot.start, slot.end)}`;
         timeRow.appendChild(time);
         const room = el('span', { cls: 'kanban-room' });
         room.textContent = slot.room_name || '—';
@@ -453,7 +462,7 @@
                     refLabel = ` · ref: ${d.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
                 } catch (_) { }
             }
-            const refresh = isTest ? '' : ' — auto-refreshes every 30 s';
+            const refresh = isTest ? '' : ` — auto-refreshes every ${AUTO_REFRESH_MS / 1000} s`;
             countLabel.textContent = `${n} slot${n !== 1 ? 's' : ''} in the next ${hours} hour${hours > 1 ? 's' : ''}${refLabel}${refresh}`;
         }
         if (liveDot) liveDot.className = 'status-dot ok';
@@ -500,7 +509,7 @@
 
         const timeRow = el('div', { cls: 'print-card-time-row' });
         const time = el('span', { cls: 'print-card-time' });
-        time.textContent = fmtTimeRange(slot.start, slot.end);
+        time.textContent = `${fmtWeekday(slot.start)} ${fmtTimeRange(slot.start, slot.end)}`;
         timeRow.appendChild(time);
         const room = el('span', { cls: 'print-card-room' });
         room.textContent = slot.room_name || '—';
@@ -582,6 +591,10 @@
     });
 
     showMineCheck?.addEventListener('change', () => {
+        loadUpcoming();
+    });
+
+    showRunningCheck?.addEventListener('change', () => {
         loadUpcoming();
     });
 

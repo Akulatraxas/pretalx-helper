@@ -45,6 +45,7 @@
     const testAtInput  = document.getElementById('occ-test-at');
     const testBadge    = document.getElementById('occ-test-badge');
     const refreshBtn   = document.getElementById('occ-refresh-btn');
+    const exportBtn    = document.getElementById('occ-export-btn');
 
     // -------------------------------------------------------------------------
     // Load data from API
@@ -343,6 +344,14 @@
         await load();
         scheduleRefresh();
         refreshBtn.disabled = false;
+    });
+
+    exportBtn?.addEventListener('click', () => {
+        // Trigger download via navigation — the server writes the file and
+        // returns it with Content-Disposition: attachment.
+        exportBtn.disabled = true;
+        window.location.href = BASE_PATH + '/api/occupancy/export';
+        setTimeout(() => { exportBtn.disabled = false; }, 2000);
     });
 
     // -------------------------------------------------------------------------

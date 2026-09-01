@@ -346,12 +346,27 @@
         refreshBtn.disabled = false;
     });
 
-    exportBtn?.addEventListener('click', () => {
-        // Trigger download via navigation — the server writes the file and
-        // returns it with Content-Disposition: attachment.
+    exportBtn?.addEventListener('click', async () => {
         exportBtn.disabled = true;
-        window.location.href = BASE_PATH + '/api/occupancy/export';
-        setTimeout(() => { exportBtn.disabled = false; }, 2000);
+        try {
+            const response = await fetch(BASE_PATH + '/api/occupancy/export');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const blob = await response.blob();
+            const filename = response.headers
+                .get('Content-Disposition')
+                ?.match(/filename="?([^";]+)"?/i)?.[1] || 'occupancy.json';
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            showToast('Failed to export occupancy data: ' + e.message, 'error');
+        } finally {
+            exportBtn.disabled = false;
+        }
     });
 
     // -------------------------------------------------------------------------

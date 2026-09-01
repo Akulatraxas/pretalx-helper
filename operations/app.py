@@ -962,7 +962,7 @@ def api_slot_rate(code, slot_index):
         slot_index (int): The slot's index within the submission.
     
     Returns:
-        A JSON response containing the saved rating, or an error response when the rating is invalid.
+        dict: The saved rating and success status, or an error describing an invalid rating.
     """
     data   = request.get_json(force=True) or {}
     rating = (data.get("rating") or "").strip()

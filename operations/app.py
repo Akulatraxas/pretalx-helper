@@ -962,7 +962,7 @@ def api_slot_rate(code, slot_index):
         slot_index (int): The slot's index within the submission.
     
     Returns:
-        A JSON response containing the saved rating, or an error response when the rating is invalid.
+        dict: The saved rating and success status, or an error describing an invalid rating.
     """
     data   = request.get_json(force=True) or {}
     rating = (data.get("rating") or "").strip()
@@ -972,6 +972,100 @@ def api_slot_rate(code, slot_index):
     db.upsert_occupancy(code, slot_index, rating, user_email=g.user.get("email"))
     return jsonify({"ok": True, "rating": rating})
 
+
+@app.route(f"{BASE_PATH}/api/occupancy/export")
+@auth.require_read_operations
+def api_occupancy_export():
+    """
+    Export all occupancy ratings to /data/occupancy/ef_{year}.json and serve
+    the file as a download.
+
+    The JSON is a mapping of "{code}-{slot_index}" → enriched rating object,
+    with title, day, start_time, and conference_room pulled from the Pretalx
+    cache.  The level field mirrors the integer index of the rating label
+    (Empty=0, Low=1, Medium=2, High=3, Full=4).
+
+    Returns:
+        A JSON file download, or HTTP 503 when the Pretalx cache is unavailable.
+    """
+    import json as _json
+
+    cache = pretalx_cache.get_cache()
+    if cache is None:
+        return jsonify({"error": "Cache not ready"}), 503
+
+    # Build a lookup: (code, slot_index) → slot metadata from cache
+    slot_lookup: dict = {}
+    for slot in cache.get("slots_flat", []):
+        key = (slot["submission_code"], slot.get("slot_index", 0))
+        slot_lookup[key] = slot
+
+    # Rating → integer level mapping
+    rating_to_level = {r: i for i, r in enumerate(db.OCCUPANCY_RATINGS)}
+
+    ratings = db.get_all_occupancy_ratings()
+
+    # Determine the year from the first slot in the cache (fallback: current year)
+    year = None
+    for slot in cache.get("slots_flat", []):
+        start_raw = slot.get("start", "")
+        if start_raw and len(start_raw) >= 4:
+            try:
+                year = int(start_raw[:4])
+                break
+            except ValueError:
+                pass
+    if year is None:
+        from datetime import datetime as _dt
+        year = _dt.now().year
+
+    output: dict = {}
+    for row in ratings:
+        code      = row["submission_code"]
+        slot_idx  = row["slot_index"]
+        rating    = row["rating"]
+        event_id  = f"{code}-{slot_idx}"
+
+        cache_slot = slot_lookup.get((code, slot_idx))
+        if cache_slot:
+            sub        = cache["submissions_map"].get(code, {})
+            title      = sub.get("title", "")
+            start_raw  = cache_slot.get("start", "")
+            day        = start_raw[:10] if start_raw else ""
+            # Keep HH:MM:SS (positions 11–19)
+            start_time = start_raw[11:19] if len(start_raw) > 18 else (start_raw[11:] if len(start_raw) > 10 else "")
+            room       = cache_slot.get("room_name", "")
+        else:
+            title      = ""
+            day        = ""
+            start_time = ""
+            room       = ""
+
+        output[event_id] = {
+            "event_id":        event_id,
+            "rating":          rating,
+            "level":           rating_to_level.get(rating, 0),
+            "title":           title,
+            "day":             day,
+            "start_time":      start_time,
+            "conference_room": room,
+        }
+
+    json_bytes = _json.dumps(output, ensure_ascii=False, indent=2).encode("utf-8")
+    filename   = f"ef_{year}.json"
+    out_path   = f"/data/occupancy/{filename}"
+
+    # Write to filesystem — create directory if needed
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "wb") as fh:
+        fh.write(json_bytes)
+    logger.info("Occupancy export written to %s (%d entries)", out_path, len(output))
+
+    return Response(
+        json_bytes,
+        mimetype="application/json; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ---------------------------------------------------------------------------

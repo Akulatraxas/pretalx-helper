@@ -555,6 +555,22 @@ def upsert_occupancy(submission_code, slot_index, rating, user_email=None):
                f"code={submission_code} slot={slot_index} rating={rating}")
 
 
+def get_all_occupancy_ratings():
+    """
+    Return all rated slots from slot_occupancy as a list of dicts.
+
+    Each dict contains submission_code, slot_index, rating, rated_by, updated_at.
+    Used for the full export of occupancy ratings to JSON.
+    """
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT submission_code, slot_index, rating, rated_by, updated_at
+            FROM slot_occupancy
+            ORDER BY submission_code, slot_index
+        """)).fetchall()
+    return [_to_dict(row) for row in rows]
+
+
 # ---------------------------------------------------------------------------
 # Slot delays (set delay / clear delay)
 # ---------------------------------------------------------------------------

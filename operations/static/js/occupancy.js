@@ -45,6 +45,7 @@
     const testAtInput  = document.getElementById('occ-test-at');
     const testBadge    = document.getElementById('occ-test-badge');
     const refreshBtn   = document.getElementById('occ-refresh-btn');
+    const exportBtn    = document.getElementById('occ-export-btn');
 
     // -------------------------------------------------------------------------
     // Load data from API
@@ -343,6 +344,29 @@
         await load();
         scheduleRefresh();
         refreshBtn.disabled = false;
+    });
+
+    exportBtn?.addEventListener('click', async () => {
+        exportBtn.disabled = true;
+        try {
+            const response = await fetch(BASE_PATH + '/api/occupancy/export');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const blob = await response.blob();
+            const filename = response.headers
+                .get('Content-Disposition')
+                ?.match(/filename="?([^";]+)"?/i)?.[1] || 'occupancy.json';
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            showToast('Failed to export occupancy data: ' + e.message, 'error');
+        } finally {
+            exportBtn.disabled = false;
+        }
     });
 
     // -------------------------------------------------------------------------

@@ -659,7 +659,10 @@ def api_output_cache():
     return Response(
         json_bytes,
         mimetype="application/json; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
     )
 
 

@@ -597,6 +597,75 @@ def api_output_csv():
     )
 
 
+@app.route(f"{BASE_PATH}/api/output/cache")
+@auth.require_read_events
+def api_output_cache():
+    """
+    Export the current Pretalx cache as a JSON file and serve it as a download.
+
+    Writes the file to /data/events/ef_{year}.json (year derived from the first
+    scheduled slot).  The ``image`` and ``speakers`` fields are stripped from
+    every submission before export.
+
+    Returns:
+        A JSON file download, or HTTP 503 when the Pretalx cache is unavailable.
+    """
+    import json as _json
+    import copy as _copy
+
+    cache = pretalx_cache.get_cache()
+    if cache is None:
+        return Response("Cache not ready", status=503)
+
+    # Determine year from first slot in cache (fallback: current year)
+    year = None
+    for slot in cache.get("slots_flat", []):
+        start_raw = slot.get("start", "")
+        if start_raw and len(start_raw) >= 4:
+            try:
+                year = int(start_raw[:4])
+                break
+            except ValueError:
+                pass
+    if year is None:
+        from datetime import datetime as _dt
+        year = _dt.now().year
+
+    # Build export-safe submissions map: strip image + speakers per entry
+    STRIP_FIELDS = {"image", "speakers"}
+    submissions_export = {}
+    for code, sub in cache.get("submissions_map", {}).items():
+        submissions_export[code] = {
+            k: v for k, v in sub.items() if k not in STRIP_FIELDS
+        }
+
+    payload = {
+        "event":            cache.get("event", {}),
+        "schedule_version": cache.get("schedule_version", ""),
+        "exported_at":      __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        "submissions":      submissions_export,
+        "slots":            cache.get("slots_flat", []),
+    }
+
+    json_bytes = _json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+    filename   = f"ef_{year}.json"
+    out_path   = f"/data/events/{filename}"
+
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "wb") as fh:
+        fh.write(json_bytes)
+    logger.info("Cache export written to %s (%d submissions)", out_path, len(submissions_export))
+
+    return Response(
+        json_bytes,
+        mimetype="application/json; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 # ---------------------------------------------------------------------------
 # API — Conflicts
 # ---------------------------------------------------------------------------

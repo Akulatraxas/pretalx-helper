@@ -20,6 +20,7 @@
     const emptyEl = document.getElementById('output-empty');
     const footerEl = document.getElementById('output-footer');
     const exportBtn = document.getElementById('btn-export-csv');
+    const exportCacheBtn = document.getElementById('btn-export-cache');
 
     const searchInput = document.getElementById('output-filter-search');
     const btnFilterResources = document.getElementById('btn-filter-resources');
@@ -627,6 +628,18 @@
         const a = document.createElement('a');
         a.href = url;
         a.download = `operations_${currentDept}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    });
+
+    // ---------------------------------------------------------------------------
+    // Cache export
+    // ---------------------------------------------------------------------------
+
+    exportCacheBtn?.addEventListener('click', () => {
+        const a = document.createElement('a');
+        a.href = `${BASE_PATH}/api/output/cache`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

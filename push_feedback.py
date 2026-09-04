@@ -22,6 +22,7 @@ import sys
 import json
 import os
 import argparse
+from collections.abc import Mapping
 
 from pretalx_client import PretalxClient, PretalxNotFoundError, PretalxAPIError, load_env
 
@@ -89,7 +90,7 @@ def build_review(entry):
         parts.append(rating_stars(rating))
         parts.append("")  # blank line after stars
 
-    message = (entry.get("Message") or "").strip()
+    message = entry.get("Message") or ""
     if message:
         parts.append(message)
 
@@ -100,6 +101,36 @@ def build_review(entry):
     return "\n".join(parts)
 
 
+def _remove_trailing_commas(raw):
+    """Remove trailing JSON commas without changing quoted string content."""
+    cleaned = []
+    in_string = False
+    escaped = False
+
+    for index, char in enumerate(raw):
+        if in_string:
+            cleaned.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == ",":
+            next_index = index + 1
+            while next_index < len(raw) and raw[next_index].isspace():
+                next_index += 1
+            if next_index < len(raw) and raw[next_index] in "}]":
+                continue
+        cleaned.append(char)
+
+    return "".join(cleaned)
+
+
 def load_feedback_file(path):
     """Load and parse the JSON feedback file.
 
@@ -108,11 +139,9 @@ def load_feedback_file(path):
     json module is strict about this, so we strip trailing commas from
     objects and arrays before parsing.
     """
-    import re
     with open(path, "r", encoding="utf-8") as fh:
         raw = fh.read()
-    # Remove trailing commas before } or ] (handles both objects and arrays)
-    cleaned = re.sub(r",(\s*[}\]])", r"\1", raw)
+    cleaned = _remove_trailing_commas(raw)
     try:
         data = json.loads(cleaned)
     except json.JSONDecodeError as exc:
@@ -121,6 +150,17 @@ def load_feedback_file(path):
         raise ValueError(
             "Expected a JSON array at the top level, got " + type(data).__name__ + "."
         )
+    for index, entry in enumerate(data):
+        if not isinstance(entry, Mapping):
+            raise ValueError(
+                "Feedback entry " + str(index) + " must be a JSON object."
+            )
+        for field in ("Id", "EventSlug"):
+            value = entry.get(field)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(
+                    "Feedback entry " + str(index) + " must have a non-empty string " + field + "."
+                )
     return data
 
 
@@ -208,7 +248,7 @@ def main():
         sys.exit(1)
 
     # -- Fetch existing feedback per submission for deduplication ------------
-    # Lazily populated: submission_code -> [feedback_dict, ...]
+    # Lazily populated: submission_code -> [feedback_dict, ...] or None on failure
     existing_cache = {}
 
     def get_existing(sub_code):
@@ -217,11 +257,9 @@ def main():
                 existing_cache[sub_code] = list(
                     client.list_feedback(event_slug, submission=sub_code)
                 )
-            except PretalxNotFoundError:
-                existing_cache[sub_code] = []
             except PretalxAPIError as exc:
                 print("  " + _c("yellow", _SYM_WARN + " Could not fetch existing feedback for " + sub_code + ": " + str(exc)))
-                existing_cache[sub_code] = []
+                existing_cache[sub_code] = None
         return existing_cache[sub_code]
 
     # -- Process entries -----------------------------------------------------
@@ -245,6 +283,10 @@ def main():
 
         # Deduplication check
         existing = get_existing(sub_code)
+        if existing is None:
+            print(prefix + " " + _c("red", _SYM_ERR + " Duplicate check failed " + _SYM_DASH + " skipping."))
+            stats["skipped_error"] += 1
+            continue
         if already_submitted(existing, source_id):
             short_id = source_id[:8] + _SYM_ELLIP
             print(prefix + " " + _c("dim", "already imported (" + short_id + ") " + _SYM_DASH + " skip"))

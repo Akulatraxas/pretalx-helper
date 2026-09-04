@@ -1003,3 +1003,48 @@ class PretalxClient:
             dict: The created speaker information details.
         """
         return self._request("POST", f"/events/{event_slug}/speaker-information/", data=data)
+
+    # --- Feedback Endpoints ---
+
+    def list_feedback(self, event_slug, submission=None, speaker=None, expand=None):
+        """
+        Lists feedback entries for an event.
+
+        Args:
+            event_slug (str): The short slug identifying the event.
+            submission (str, optional): Filter by submission code.
+            speaker (str, optional): Filter by speaker code.
+            expand (list, optional): Select fields to expand ('speaker', 'submission').
+
+        Returns:
+            generator: Yields feedback dictionaries.
+        """
+        params = {}
+        if submission is not None:
+            params["submission"] = submission
+        if speaker is not None:
+            params["speaker"] = speaker
+        if expand is not None:
+            params["expand"] = expand
+        return self._get_paginated(f"/events/{event_slug}/feedback/", params=params)
+
+    def create_feedback(self, event_slug, submission, review, speaker=None):
+        """
+        Creates a new feedback entry for a submission.
+
+        Args:
+            event_slug (str): The short slug identifying the event.
+            submission (str): The alphanumeric code of the submission.
+            review (str): The feedback text.
+            speaker (str, optional): The alphanumeric code of the speaker.
+
+        Returns:
+            dict: The created feedback details.
+        """
+        data = {
+            "submission": submission,
+            "review": review,
+        }
+        if speaker is not None:
+            data["speaker"] = speaker
+        return self._request("POST", f"/events/{event_slug}/feedback/", data=data)

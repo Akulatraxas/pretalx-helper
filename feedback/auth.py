@@ -20,13 +20,12 @@ of IDP group IDs):
   Note: WRITE_* always implies read for the same domain.
         Admin (READ_GROUPS / WRITE_GROUPS) always implies access to every domain.
 
-In development (no proxy), set DEV_AUTH_* env vars to inject fake headers:
+In development (no proxy), explicitly enable development authentication and
+set DEV_AUTH_* env vars to inject fake headers:
+  DEV_AUTH_ENABLED=true
   DEV_AUTH_EMAIL=dev@example.com
   DEV_AUTH_USER=Developer
   DEV_AUTH_GROUPS=group-programming-id
-
-If none of the group env vars are configured, all access is allowed
-(convenient for local development without DEV_AUTH vars).
 """
 
 import os
@@ -46,6 +45,11 @@ def _parse_group_env(var):
     return {x.strip() for x in raw.split(",") if x.strip()}
 
 
+def _parse_bool_env(var):
+    """Return whether an environment variable is explicitly enabled."""
+    return os.environ.get(var, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 # Admin groups (full access)
 READ_GROUPS  = _parse_group_env("READ_GROUPS")
 WRITE_GROUPS = _parse_group_env("WRITE_GROUPS")
@@ -54,6 +58,7 @@ WRITE_GROUPS = _parse_group_env("WRITE_GROUPS")
 READ_GROUPS_FEEDBACK  = _parse_group_env("READ_GROUPS_FEEDBACK")
 WRITE_GROUPS_FEEDBACK = _parse_group_env("WRITE_GROUPS_FEEDBACK")
 
+DEV_AUTH_ENABLED = _parse_bool_env("DEV_AUTH_ENABLED")
 DEV_AUTH_EMAIL  = os.environ.get("DEV_AUTH_EMAIL", "")
 DEV_AUTH_USER   = os.environ.get("DEV_AUTH_USER", "")
 DEV_AUTH_GROUPS = os.environ.get("DEV_AUTH_GROUPS", "")
@@ -63,6 +68,21 @@ _ALL_GROUP_ENVS = (
     READ_GROUPS_FEEDBACK, WRITE_GROUPS_FEEDBACK,
 )
 _ACL_CONFIGURED = any(_ALL_GROUP_ENVS)
+_DEV_AUTH_ACTIVE = DEV_AUTH_ENABLED and bool(DEV_AUTH_EMAIL)
+
+
+def validate_config():
+    """Reject startup unless production ACLs or explicit development auth are configured."""
+    if DEV_AUTH_ENABLED and not DEV_AUTH_EMAIL:
+        raise RuntimeError("DEV_AUTH_ENABLED requires DEV_AUTH_EMAIL")
+    if not _ACL_CONFIGURED and not _DEV_AUTH_ACTIVE:
+        raise RuntimeError(
+            "No ACL groups configured; set READ_GROUPS/WRITE_GROUPS (or their "
+            "feedback variants), or explicitly enable development auth with "
+            "DEV_AUTH_ENABLED=true and DEV_AUTH_EMAIL"
+        )
+    if DEV_AUTH_EMAIL and not DEV_AUTH_ENABLED:
+        logger.warning("DEV_AUTH_EMAIL is ignored unless DEV_AUTH_ENABLED is true")
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +93,7 @@ def get_current_user():
     """
     Resolve the current user's identity, groups, and authorization flags.
     """
-    if DEV_AUTH_EMAIL:
+    if _DEV_AUTH_ACTIVE:
         email      = DEV_AUTH_EMAIL
         username   = DEV_AUTH_USER or DEV_AUTH_EMAIL
         groups_raw = DEV_AUTH_GROUPS
@@ -84,8 +104,8 @@ def get_current_user():
 
     groups = {x.strip() for x in groups_raw.split(",") if x.strip()}
 
-    if not _ACL_CONFIGURED:
-        # No groups configured — allow everything (local dev mode)
+    if not _ACL_CONFIGURED and _DEV_AUTH_ACTIVE:
+        # Explicit local development mode without production ACL groups.
         return {
             "email":               email,
             "username":            username or email or "anonymous",

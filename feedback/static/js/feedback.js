@@ -18,6 +18,7 @@
     let conventions = [];
     let currentConId = null;
     let currentConData = null;
+    let conventionRequestSequence = 0;
 
     const filters = {
         q: '',
@@ -214,7 +215,9 @@
 
     async function selectConvention(conId) {
         if (currentConId === conId && currentConData) return;
+        const requestSequence = ++conventionRequestSequence;
         currentConId = conId;
+        currentConData = null;
 
         // Update pills & dropdown active state
         document.querySelectorAll('.con-pill').forEach(btn => {
@@ -233,6 +236,7 @@
 
         try {
             const data = await apiFetch(`/api/convention/${encodeURIComponent(conId)}`);
+            if (requestSequence !== conventionRequestSequence || currentConId !== conId) return;
             currentConData = data;
             expandedEvents.clear();
             allExpanded = false;
@@ -257,9 +261,12 @@
                 setTimeout(() => scrollToEvent(filters.targetEvent), 120);
             }
         } catch (err) {
+            if (requestSequence !== conventionRequestSequence || currentConId !== conId) return;
             showError('Failed to load convention feedback: ' + err.message);
         } finally {
-            loadingState.style.display = 'none';
+            if (requestSequence === conventionRequestSequence && currentConId === conId) {
+                loadingState.style.display = 'none';
+            }
         }
     }
 

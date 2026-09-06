@@ -35,14 +35,16 @@ fi
 # Defaults
 SCHEDULE_VERSION="${SCHEDULE_VERSION:-latest}"
 BASE_PATH="${BASE_PATH:-/ef-feedback}"
+PRETALX_TIMEOUT="${PRETALX_TIMEOUT:-30}"
 
-# ACL group IDs (optional — if unset, all access is allowed)
+# ACL group IDs (required unless explicit development auth is enabled)
 READ_GROUPS="${READ_GROUPS:-}"
 WRITE_GROUPS="${WRITE_GROUPS:-}"
 READ_GROUPS_FEEDBACK="${READ_GROUPS_FEEDBACK:-}"
 WRITE_GROUPS_FEEDBACK="${WRITE_GROUPS_FEEDBACK:-}"
 
 # Dev auth override (set these for local testing without oauth2-proxy)
+DEV_AUTH_ENABLED="${DEV_AUTH_ENABLED:-false}"
 DEV_AUTH_EMAIL="${DEV_AUTH_EMAIL:-}"
 DEV_AUTH_USER="${DEV_AUTH_USER:-}"
 DEV_AUTH_GROUPS="${DEV_AUTH_GROUPS:-}"
@@ -82,17 +84,20 @@ echo "→ Starting container '${CONTAINER_NAME}' on port ${PORT}…"
 podman run -d \
     --name "${CONTAINER_NAME}" \
     --restart unless-stopped \
+    --userns=keep-id:uid=10001,gid=10001 \
     -p "${PORT}:8091" \
     -v "${DATA_DIR}:/data:Z" \
     -e "PRETALX_URL=${PRETALX_URL}" \
     -e "PRETALX_APIKEY=${PRETALX_APIKEY}" \
     -e "PRETALX_EVENT_SLUG=${PRETALX_EVENT_SLUG}" \
+    -e "PRETALX_TIMEOUT=${PRETALX_TIMEOUT}" \
     -e "SCHEDULE_VERSION=${SCHEDULE_VERSION}" \
     -e "BASE_PATH=${BASE_PATH}" \
     -e "READ_GROUPS=${READ_GROUPS}" \
     -e "WRITE_GROUPS=${WRITE_GROUPS}" \
     -e "READ_GROUPS_FEEDBACK=${READ_GROUPS_FEEDBACK}" \
     -e "WRITE_GROUPS_FEEDBACK=${WRITE_GROUPS_FEEDBACK}" \
+    -e "DEV_AUTH_ENABLED=${DEV_AUTH_ENABLED}" \
     -e "DEV_AUTH_EMAIL=${DEV_AUTH_EMAIL}" \
     -e "DEV_AUTH_USER=${DEV_AUTH_USER}" \
     -e "DEV_AUTH_GROUPS=${DEV_AUTH_GROUPS}" \

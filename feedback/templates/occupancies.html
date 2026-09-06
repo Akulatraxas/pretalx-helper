@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Room Occupancies{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ base_path }}/static/css/pages/occupancies.css">
+{% endblock %}
+
+{% block content %}
+<div class="occupancies-container">
+    <!-- Topbar & Convention Selector -->
+    <div class="occ-topbar">
+        <div class="topbar-title-section">
+            <h1 class="page-title">Room Occupancies</h1>
+            <p class="page-description">Convention room fullness and crowd density ratings</p>
+        </div>
+
+        <div class="con-selector-container" id="con-selector-container" aria-label="Select convention">
+            <label for="con-select" class="con-selector-label">Convention:</label>
+            <div class="con-pill-group" id="con-pill-group">
+                <!-- Convention pills dynamically inserted here -->
+            </div>
+            <select id="con-select" class="con-select-dropdown" aria-label="Select Convention">
+                <!-- Options dynamically inserted here -->
+            </select>
+        </div>
+    </div>
+
+    <!-- Visualization & Overview Section -->
+    <div class="occ-visual-section" id="occ-visual-section" style="display: none;">
+        <!-- Top Stats Metrics -->
+        <div class="occ-stats-grid">
+            <div class="occ-stat-card">
+                <span class="occ-stat-label">Total Rated Slots</span>
+                <span class="occ-stat-value" id="stat-total-rated">—</span>
+            </div>
+            <div class="occ-stat-card">
+                <span class="occ-stat-label">Average Occupancy</span>
+                <div class="occ-stat-row">
+                    <span class="occ-stat-value" id="stat-avg-level">—</span>
+                    <span class="occ-stat-sub" id="stat-avg-percent"></span>
+                </div>
+            </div>
+            <div class="occ-stat-card">
+                <span class="occ-stat-label">Full / Packed (4–5/5)</span>
+                <span class="occ-stat-value occ-color-full" id="stat-count-full">—</span>
+            </div>
+            <div class="occ-stat-card">
+                <span class="occ-stat-label">High Demand (3/5)</span>
+                <span class="occ-stat-value occ-color-high" id="stat-count-high">—</span>
+            </div>
+            <div class="occ-stat-card">
+                <span class="occ-stat-label">Venues Monitored</span>
+                <span class="occ-stat-value" id="stat-total-rooms">—</span>
+            </div>
+        </div>
+
+        <!-- Visual Distribution Bar Card -->
+        <div class="distribution-card">
+            <div class="distribution-header">
+                <span class="distribution-title">Occupancy Distribution Breakdown</span>
+                <span class="distribution-hint">Click a segment to filter</span>
+            </div>
+            <!-- Multi-segment graphical bar -->
+            <div class="distribution-bar-track" id="distribution-bar-track" role="img" aria-label="Occupancy level distribution bar">
+                <!-- Segments dynamically populated -->
+            </div>
+            <!-- Clickable Legend Pills -->
+            <div class="distribution-legend" id="distribution-legend">
+                <!-- Legend items dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <div class="toolbar-card" id="toolbar-card">
+        <div class="toolbar-row primary-filters">
+            <!-- Search by title, code, room -->
+            <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text"
+                       id="filter-search"
+                       class="form-input search-input"
+                       placeholder="Filter by title, event code, room name…"
+                       autocomplete="off"
+                       spellcheck="false">
+                <button type="button" id="btn-clear-search" class="btn-clear-search hidden" title="Clear search">✕</button>
+            </div>
+
+            <!-- Occupancy Level Filter -->
+            <div class="filter-item">
+                <label for="filter-level" class="filter-label">Occupancy Level:</label>
+                <select id="filter-level" class="form-select">
+                    <option value="">All Levels</option>
+                    <option value="Full">🔴 Full (Level 4–5)</option>
+                    <option value="High">🟠 High (Level 3)</option>
+                    <option value="Medium">🟡 Medium (Level 2)</option>
+                    <option value="Low">🟢 Low (Level 1)</option>
+                    <option value="Empty">⬜ Empty (Level 0)</option>
+                </select>
+            </div>
+
+            <!-- Room Filter -->
+            <div class="filter-item" id="group-filter-room">
+                <label for="filter-room" class="filter-label">Room / Stage:</label>
+                <select id="filter-room" class="form-select">
+                    <option value="">All Rooms</option>
+                </select>
+            </div>
+
+            <!-- Track Filter (EF 30+) -->
+            <div class="filter-item" id="group-filter-track" style="display: none;">
+                <label for="filter-track" class="filter-label">Track:</label>
+                <select id="filter-track" class="form-select">
+                    <option value="">All Tracks</option>
+                </select>
+            </div>
+
+            <!-- Day Filter -->
+            <div class="filter-item" id="group-filter-day">
+                <label for="filter-day" class="filter-label">Day:</label>
+                <select id="filter-day" class="form-select">
+                    <option value="">All Days</option>
+                </select>
+            </div>
+
+            <!-- Sort By -->
+            <div class="filter-item">
+                <label for="filter-sort" class="filter-label">Sort:</label>
+                <select id="filter-sort" class="form-select">
+                    <option value="level_desc">Highest Occupancy</option>
+                    <option value="level_asc">Lowest Occupancy</option>
+                    <option value="time">Day &amp; Time (Schedule)</option>
+                    <option value="title">Event Title (A–Z)</option>
+                    <option value="room">Room Name</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="toolbar-row secondary-controls">
+            <div class="toolbar-left-options">
+                <span class="active-filter-badge hidden" id="active-filter-badge">Filtered</span>
+            </div>
+
+            <div class="toolbar-actions">
+                <button type="button" id="btn-reset-filters" class="btn btn-ghost btn-sm hidden" title="Reset all filters">
+                    Reset Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Filters & Result Count -->
+    <div class="results-meta-bar">
+        <span class="results-count" id="results-count">Loading occupancies…</span>
+        <span class="occ-meta-info" id="occ-meta-info"></span>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading occupancy ratings…</p>
+    </div>
+
+    <!-- Occupancies Grid -->
+    <div id="occ-grid" class="occ-grid" style="display: none;"></div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="empty-state hidden">
+        <div class="empty-icon">📊</div>
+        <div class="empty-title" id="empty-title">No occupancy records found</div>
+        <div class="empty-desc" id="empty-desc">No occupancy ratings match the selected filters or convention.</div>
+        <button type="button" id="btn-empty-reset" class="btn btn-primary" style="margin-top: 12px;">Reset Filters</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ base_path }}/static/js/occupancies.js"></script>
+{% endblock %}

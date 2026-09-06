@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback Viewer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ base_path }}/static/css/pages/feedback.css">
+{% endblock %}
+
+{% block content %}
+<div class="feedback-container">
+    <!-- Top Header & Convention Selector -->
+    <div class="feedback-topbar">
+        <div class="topbar-title-section">
+            <h1 class="page-title">Convention Feedback</h1>
+            <p class="page-description">Attendee ratings and reviews for convention events</p>
+        </div>
+
+        <div class="con-selector-container" id="con-selector-container" aria-label="Select convention">
+            <label for="con-select" class="con-selector-label">Convention:</label>
+            <div class="con-pill-group" id="con-pill-group">
+                <!-- Convention pills dynamically inserted here -->
+            </div>
+            <select id="con-select" class="con-select-dropdown" aria-label="Select Convention">
+                <!-- Options dynamically inserted here -->
+            </select>
+        </div>
+    </div>
+
+    <!-- Overview Stats Banner -->
+    <div class="stats-banner" id="stats-banner" style="display: none;">
+        <div class="stat-card">
+            <span class="stat-label">Events with Feedback</span>
+            <span class="stat-value" id="stat-total-events">—</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Total Submissions</span>
+            <span class="stat-value" id="stat-total-feedbacks">—</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Written Comments</span>
+            <span class="stat-value" id="stat-total-comments">—</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Average Rating</span>
+            <div class="stat-rating-row">
+                <span class="stat-value" id="stat-avg-rating">—</span>
+                <span class="stat-stars" id="stat-avg-stars"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <div class="toolbar-card" id="toolbar-card">
+        <div class="toolbar-row primary-filters">
+            <!-- Search by title, slug, or comment -->
+            <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text"
+                       id="filter-search"
+                       class="form-input search-input"
+                       placeholder="Filter by title, event code, comment text…"
+                       autocomplete="off"
+                       spellcheck="false">
+                <button type="button" id="btn-clear-search" class="btn-clear-search hidden" title="Clear search">✕</button>
+            </div>
+
+            <!-- Track Filter (EF 30+) -->
+            <div class="filter-item" id="group-filter-track" style="display: none;">
+                <label for="filter-track" class="filter-label">Track:</label>
+                <select id="filter-track" class="form-select">
+                    <option value="">All Tracks</option>
+                </select>
+            </div>
+
+            <!-- Rating Filter -->
+            <div class="filter-item">
+                <label for="filter-rating" class="filter-label">Rating:</label>
+                <select id="filter-rating" class="form-select">
+                    <option value="">All Ratings</option>
+                    <option value="5">⭐⭐⭐⭐⭐ (5 Stars)</option>
+                    <option value="4+">⭐⭐⭐⭐ (4+ Stars)</option>
+                    <option value="3-">⭐⭐⭐ (≤ 3 Stars)</option>
+                </select>
+            </div>
+
+            <!-- Occupancy Filter (EF 30+) -->
+            <div class="filter-item" id="group-filter-occupancy" style="display: none;">
+                <label for="filter-occupancy" class="filter-label">Occupancy:</label>
+                <select id="filter-occupancy" class="form-select">
+                    <option value="">All Occupancies</option>
+                    <option value="rated">Has Occupancy Data</option>
+                    <option value="high">High / Full (≥3/5)</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low / Empty</option>
+                </select>
+            </div>
+
+            <!-- Sort By -->
+            <div class="filter-item">
+                <label for="filter-sort" class="filter-label">Sort:</label>
+                <select id="filter-sort" class="form-select">
+                    <option value="reviews">Most Reviews</option>
+                    <option value="rating_desc">Highest Rated</option>
+                    <option value="rating_asc">Lowest Rated</option>
+                    <option value="title">Title / Slug (A–Z)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="toolbar-row secondary-controls">
+            <div class="toolbar-left-options">
+                <label class="checkbox-label" for="filter-has-comments">
+                    <input type="checkbox" id="filter-has-comments" class="form-checkbox">
+                    <span>Only events with written comments</span>
+                </label>
+                <span class="active-filter-badge hidden" id="active-filter-badge">Filtered</span>
+            </div>
+
+            <div class="toolbar-actions">
+                <button type="button" id="btn-toggle-all" class="btn btn-ghost btn-sm">
+                    <span id="btn-toggle-all-icon">⊞</span>
+                    <span id="btn-toggle-all-text">Expand All</span>
+                </button>
+                <button type="button" id="btn-reset-filters" class="btn btn-ghost btn-sm hidden" title="Reset all filters">
+                    Reset Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Filters & Result Count -->
+    <div class="results-meta-bar">
+        <span class="results-count" id="results-count">Loading events…</span>
+        <span class="convention-version-info" id="convention-version-info"></span>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading convention data…</p>
+    </div>
+
+    <!-- Events Feed List -->
+    <div id="events-list" class="events-list" style="display: none;"></div>
+
+    <!-- Empty State (No results) -->
+    <div id="empty-state" class="empty-state hidden">
+        <div class="empty-icon">💬</div>
+        <div class="empty-title" id="empty-title">No feedback found</div>
+        <div class="empty-desc" id="empty-desc">Try adjusting your search query or clear active filters.</div>
+        <button type="button" id="btn-empty-reset" class="btn btn-primary" style="margin-top: 12px;">Reset Filters</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ base_path }}/static/js/feedback.js"></script>
+{% endblock %}

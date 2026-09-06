@@ -1,0 +1,12 @@
+/* ============================================================
+   Feedback Viewer — Design System
+   Light theme — EF CI colours (EF-Green #005953)
+   ============================================================ */
+
+/* --- Core & Shared Components --- */
+@import url('css/base.css');
+@import url('css/components.css');
+
+/* --- Page-specific Styles --- */
+@import url('css/pages/feedback.css');
+@import url('css/pages/occupancies.css');

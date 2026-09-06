@@ -17,3 +17,8 @@ updates:
     directory: "/operations" # Location of package manifests
     schedule:
       interval: "weekly"
+  - package-ecosystem: "pip" # See documentation for possible values
+    directory: "/feedback" # Location of package manifests
+    schedule:
+      interval: "weekly"
+

@@ -96,3 +96,34 @@ jobs:
           labels: ${{ steps.meta-operations.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # --- FEEDBACK ---
+      - name: Prepare feedback build context
+        run: |
+          cp pretalx_client.py feedback/pretalx_client.py
+          mkdir -p feedback/fonts
+          cp -r web/static/fonts/. feedback/fonts/
+
+      - name: Extract metadata for Feedback
+        id: meta-feedback
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/pretalx-api-feedback
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-
+
+      - name: Build and push Feedback
+        uses: docker/build-push-action@v5
+        with:
+          context: ./feedback
+          file: ./feedback/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-feedback.outputs.tags }}
+          labels: ${{ steps.meta-feedback.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+

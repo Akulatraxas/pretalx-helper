@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Feedback{% endblock %} — EF Feedback</title>
+    <meta name="description" content="Convention attendee feedback viewer">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="{{ base_path }}/static/style.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% set page_can_write = (
+    user and (
+        user.can_admin or
+        (page == 'feedback' and user.can_write_feedback)
+    )
+) or (not user) %}
+
+<header class="app-header">
+    <div class="header-inner">
+        <div class="header-brand">
+            <a href="{{ base_path }}/" class="brand-link" title="Feedback Viewer">
+                <span class="brand-icon">💬</span>
+                <span class="brand-title">Feedback</span>
+            </a>
+            <span class="brand-subtitle" id="event-name-badge">—</span>
+        </div>
+
+        <nav class="main-nav" role="navigation" aria-label="Main navigation">
+            <a href="{{ base_path }}/feedback" class="nav-link {% if page == 'feedback' %}active{% endif %}" id="nav-feedback">
+                <span class="nav-icon">💬</span> Feedback
+            </a>
+            <a href="{{ base_path }}/occupancies" class="nav-link {% if page == 'occupancies' %}active{% endif %}" id="nav-occupancies">
+                <span class="nav-icon">📊</span> Occupancies
+            </a>
+        </nav>
+
+        <!-- Mobile hamburger button (hidden on desktop via CSS) -->
+        <button class="nav-hamburger" id="nav-hamburger" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-dropdown">
+            <span class="hamburger-bar"></span>
+            <span class="hamburger-bar"></span>
+            <span class="hamburger-bar"></span>
+        </button>
+
+        <div class="header-right">
+            <div class="cache-status" id="cache-status" title="Schedule cache status">
+                <span class="status-dot" id="cache-dot"></span>
+                <span class="status-label" id="cache-label">Loading…</span>
+            </div>
+            {% if user %}
+            <div class="user-badge" title="{{ user.email }}">
+                <span class="user-avatar">{{ (user.username or user.email or '?')[0].upper() }}</span>
+                <span class="user-name">{{ user.username or user.email }}</span>
+                {% if page_can_write %}
+                <span class="user-role write" title="Read/Write">RW</span>
+                {% else %}
+                <span class="user-role read" title="Read only">RO</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</header>
+
+<!-- Mobile nav dropdown (hidden on desktop via CSS) -->
+<div class="mobile-nav-dropdown hidden" id="mobile-nav-dropdown" role="navigation" aria-label="Mobile navigation">
+    <a href="{{ base_path }}/feedback" class="mobile-nav-link {% if page == 'feedback' %}active{% endif %}">
+        <span class="nav-icon">💬</span> Feedback
+    </a>
+    <a href="{{ base_path }}/occupancies" class="mobile-nav-link {% if page == 'occupancies' %}active{% endif %}">
+        <span class="nav-icon">📊</span> Occupancies
+    </a>
+</div>
+
+<main class="main-content" id="main-content">
+    {% block content %}{% endblock %}
+</main>
+
+<div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+<script src="{{ base_path }}/static/js/common.js"
+        id="common-script"
+        data-base-path="{{ base_path }}"
+        data-can-write="{{ 'true' if page_can_write else 'false' }}">
+</script>
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

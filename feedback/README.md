@@ -25,6 +25,7 @@ PRETALX_URL=https://cfp.example.org
 PRETALX_APIKEY=your-api-key
 PRETALX_EVENT_SLUG=ef2026
 SCHEDULE_VERSION=latest        # "latest" (published, no blockers) or "wip"
+PRETALX_TIMEOUT=30             # API request timeout in seconds
 BASE_PATH=/ef-feedback         # URL prefix
 ```
 
@@ -42,10 +43,14 @@ WRITE_GROUPS_FEEDBACK=group-id-d # feedback-specific write
 **Local development without a proxy** — inject fake credentials directly:
 
 ```env
+DEV_AUTH_ENABLED=true
 DEV_AUTH_EMAIL=dev@example.com
 DEV_AUTH_USER=Developer
 DEV_AUTH_GROUPS=group-id-b
 ```
+
+The service refuses to start without ACL groups unless this explicit development
+mode is enabled with a development email.
 
 ## Container management
 
@@ -56,6 +61,9 @@ podman stop ef-feedback       # stop
 ```
 
 The SQLite database is persisted in `~/ef-feedback-data/feedback.db` on the host.
+The container runs as UID/GID 10001. `run.sh` maps the invoking user to that
+identity so the bind-mounted data directory remains writable. For other Docker
+launchers, ensure the host directory is writable by UID/GID 10001.
 
 ## Stack
 

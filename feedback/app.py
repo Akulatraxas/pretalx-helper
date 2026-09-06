@@ -72,6 +72,7 @@ def inject_globals():
 # Startup
 # ---------------------------------------------------------------------------
 
+auth.validate_config()
 db.init_db()
 
 if PRETALX_URL and PRETALX_APIKEY and PRETALX_EVENT:
@@ -95,6 +96,8 @@ def add_security_headers(response):
         "img-src 'self' data: https:; "
         "script-src 'self';"
     )
+    if request.path.startswith(f"{BASE_PATH}/api/"):
+        response.headers["Cache-Control"] = "no-store"
     return response
 
 

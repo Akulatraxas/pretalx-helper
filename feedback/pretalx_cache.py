@@ -30,6 +30,7 @@ _cache = {
     "last_fetched": None,   # Unix timestamp
     "error":        None,   # last error message
     "lock":         threading.Lock(),
+    "fetch_lock":   threading.Lock(),
 }
 
 
@@ -150,7 +151,7 @@ def build_cache(client, event_slug, schedule_version):
                 continue
             tags = sub_data.get("tags", [])
             if any(
-                (isinstance(t, dict) and t.get("tag", "").strip().lower() == "internal")
+                (isinstance(t, dict) and _localized(t.get("tag", "")).strip().lower() == "internal")
                 for t in tags
             ):
                 continue
@@ -247,6 +248,10 @@ def build_cache(client, event_slug, schedule_version):
 # ---------------------------------------------------------------------------
 
 def _do_fetch():
+    if not _cache["fetch_lock"].acquire(blocking=False):
+        logger.info("Pretalx cache refresh already in progress; skipping duplicate request.")
+        return False
+
     try:
         client = PretalxClient(url=PRETALX_URL, apikey=PRETALX_APIKEY)
         data   = build_cache(client, PRETALX_EVENT, SCHEDULE_VERSION)
@@ -257,10 +262,14 @@ def _do_fetch():
             _cache["error"]        = None
 
         logger.info("Pretalx cache refreshed successfully.")
+        return True
     except Exception as exc:
         logger.error("Pretalx cache fetch failed: %s", exc)
         with _cache["lock"]:
             _cache["error"] = str(exc)
+        return False
+    finally:
+        _cache["fetch_lock"].release()
 
 
 def _periodic_refresh():

@@ -70,7 +70,7 @@ class PretalxClient:
     """
     The main client class for interacting with the Pretalx REST API.
     """
-    def __init__(self, url=None, apikey=None, version=None):
+    def __init__(self, url=None, apikey=None, version=None, timeout=None):
         """
         Initializes the Pretalx API Client.
         
@@ -80,6 +80,7 @@ class PretalxClient:
             apikey (str, optional): The API token from Pretalx dashboard.
                                     If omitted, attempts to load from PRETALX_APIKEY environment variable or .env file.
             version (str, optional): The Pretalx-Version override header (e.g. 'v1' or 'v-next').
+            timeout (float, optional): Request timeout in seconds. Defaults to PRETALX_TIMEOUT or 30.
         """
         # Automatically load .env if credentials are not explicitly provided in python environment
         if not url or not apikey:
@@ -97,6 +98,24 @@ class PretalxClient:
             raise ValueError(
                 "Pretalx API Key is missing. Set PRETALX_APIKEY in your environment/.env or pass it to the constructor."
             )
+
+        parsed_url = urllib.parse.urlsplit(raw_url)
+        if parsed_url.scheme.lower() != "https" or not parsed_url.hostname:
+            raise ValueError("Pretalx Base URL must be an absolute HTTPS URL.")
+        if parsed_url.username or parsed_url.password:
+            raise ValueError("Pretalx Base URL must not contain credentials.")
+        try:
+            self._origin = ("https", parsed_url.hostname.lower(), parsed_url.port or 443)
+        except ValueError as exc:
+            raise ValueError("Pretalx Base URL contains an invalid port.") from exc
+
+        raw_timeout = timeout if timeout is not None else os.environ.get("PRETALX_TIMEOUT", "30")
+        try:
+            self.timeout = float(raw_timeout)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Pretalx request timeout must be a number of seconds.") from exc
+        if self.timeout <= 0:
+            raise ValueError("Pretalx request timeout must be greater than zero.")
             
         # Standardize and save the base website URL (without /api or /api/v1) for link generation
         self.site_url = raw_url.rstrip("/")
@@ -127,9 +146,11 @@ class PretalxClient:
                         cleaned_params[k] = str(v)
             if cleaned_params:
                 url = f"{url}?{urllib.parse.urlencode(cleaned_params)}"
+
+        url = self._validate_request_url(url)
                 
         req = urllib.request.Request(url, method=method)
-        req.add_header("Authorization", f"Token {self.apikey}")
+        req.add_unredirected_header("Authorization", f"Token {self.apikey}")
         req.add_header("Accept", "application/json")
         if self.version:
             req.add_header("Pretalx-Version", self.version)
@@ -139,7 +160,7 @@ class PretalxClient:
             req.data = json.dumps(data).encode("utf-8")
             
         try:
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=self.timeout) as response:
                 status_code = response.status
                 res_data = response.read().decode("utf-8")
                 if status_code == 204:
@@ -182,6 +203,17 @@ class PretalxClient:
         except urllib.error.URLError as e:
             raise PretalxAPIError(f"Connection or URL error occurred: {e.reason}")
 
+    def _validate_request_url(self, url):
+        """Allow authenticated requests only to HTTPS URLs on the configured origin."""
+        parsed = urllib.parse.urlsplit(url)
+        try:
+            origin = (parsed.scheme.lower(), (parsed.hostname or "").lower(), parsed.port or 443)
+        except ValueError as exc:
+            raise ValueError("Pretalx request URL contains an invalid port.") from exc
+        if origin != self._origin or parsed.username or parsed.password:
+            raise ValueError("Pretalx request URL must use HTTPS and match the configured origin.")
+        return url
+
     def _request(self, method, path, params=None, data=None):
         """Internal helper to request a relative API path."""
         if not path.startswith("/"):
@@ -202,6 +234,8 @@ class PretalxClient:
                 yield item
             next_url = response.get("next")
             while next_url:
+                next_url = urllib.parse.urljoin(f"{self.base_url}/", next_url)
+                self._validate_request_url(next_url)
                 response = self._request_raw("GET", next_url)
                 for item in response.get("results", []):
                     yield item
@@ -604,6 +638,7 @@ class PretalxClient:
             dict: The updated submission details dictionary.
         """
         tid = tag_id["id"] if isinstance(tag_id, dict) and "id" in tag_id else tag_id
+        sub = None
         if current_tags is None:
             sub = self.get_submission(event_slug, code)
             current_tags = sub.get("tags", [])
@@ -627,6 +662,7 @@ class PretalxClient:
             dict: The updated submission details dictionary.
         """
         tid = tag_id["id"] if isinstance(tag_id, dict) and "id" in tag_id else tag_id
+        sub = None
         if current_tags is None:
             sub = self.get_submission(event_slug, code)
             current_tags = sub.get("tags", [])
@@ -634,7 +670,7 @@ class PretalxClient:
         if tid in existing_ids:
             existing_ids.remove(tid)
             return self.update_submission_tags(event_slug, code, existing_ids)
-        return sub if isinstance(current_tags[0] if current_tags else None, dict) else {"code": code, "tags": existing_ids}
+        return sub if sub is not None else {"code": code, "tags": existing_ids}
 
 
     # --- Rooms Endpoints ---

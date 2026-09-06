@@ -18,7 +18,7 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute(sa.text("""
-        CREATE TABLE IF NOT EXISTS audit_log (
+        CREATE TABLE audit_log (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             user_email  TEXT,
             action      TEXT NOT NULL,

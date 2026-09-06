@@ -12,6 +12,8 @@ from sqlalchemy import create_engine, event, text, inspect as sa_inspect
 
 logger = logging.getLogger(__name__)
 
+_AUDIT_LOG_COLUMNS = {"id", "user_email", "action", "detail", "created_at"}
+
 DEFAULT_DB_PATH = (
     "/data/feedback.db"
     if os.path.isdir("/data") and os.access("/data", os.W_OK)
@@ -70,6 +72,16 @@ def init_db():
     if current_rev is None:
         insp = sa_inspect(engine)
         if "audit_log" in insp.get_table_names():
+            actual_columns = {column["name"] for column in insp.get_columns("audit_log")}
+            if actual_columns != _AUDIT_LOG_COLUMNS:
+                missing = sorted(_AUDIT_LOG_COLUMNS - actual_columns)
+                unexpected = sorted(actual_columns - _AUDIT_LOG_COLUMNS)
+                raise RuntimeError(
+                    "Existing audit_log schema does not match revision 0001 "
+                    f"(missing columns: {missing or 'none'}; "
+                    f"unexpected columns: {unexpected or 'none'}). "
+                    "Refusing to stamp an incompatible database."
+                )
             logger.info("Existing pre-Alembic database detected — stamping at head")
             command.stamp(alembic_cfg, "head")
             return

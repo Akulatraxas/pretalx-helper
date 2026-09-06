@@ -20,6 +20,7 @@
     let conventions = [];
     let currentConId = null;
     let currentData = null;
+    let conventionRequestSequence = 0;
 
     const filters = {
         q: '',
@@ -216,7 +217,9 @@
 
     async function selectConvention(conId) {
         if (currentConId === conId && currentData) return;
+        const requestSequence = ++conventionRequestSequence;
         currentConId = conId;
+        currentData = null;
 
         document.querySelectorAll('.con-pill').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.conId === conId);
@@ -233,6 +236,7 @@
 
         try {
             const data = await apiFetch(`/api/occupancies/${encodeURIComponent(conId)}`);
+            if (requestSequence !== conventionRequestSequence || currentConId !== conId) return;
             currentData = data;
 
             if (!data.convention || !data.convention.has_occupancy || !data.items || data.items.length === 0) {
@@ -249,9 +253,12 @@
                 setTimeout(() => scrollToItem(filters.targetItem), 150);
             }
         } catch (err) {
+            if (requestSequence !== conventionRequestSequence || currentConId !== conId) return;
             showError('Failed to load room occupancies: ' + err.message);
         } finally {
-            loadingState.style.display = 'none';
+            if (requestSequence === conventionRequestSequence && currentConId === conId) {
+                loadingState.style.display = 'none';
+            }
         }
     }
 

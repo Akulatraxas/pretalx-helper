@@ -1,5 +1,5 @@
 flask==3.1.*
-gunicorn==26.*
+gunicorn==27.*
 sqlalchemy==2.1.*
 alembic==1.19.*
 requests==2.34.*
